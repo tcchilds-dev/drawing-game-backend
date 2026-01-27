@@ -1,0 +1,37 @@
+{
+  "name": "drawing_game_backend",
+  "version": "0.0.1",
+  "description": "web drawing game",
+  "main": "server.js",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx ./src/index.ts",
+    "test": "vitest",
+    "prepare": "husky"
+  },
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.27.0",
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.10",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.1.7",
+    "prettier": "^3.8.1",
+    "socket.io-client": "^4.8.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "typia": "^11.0.3"
+  }
+}
