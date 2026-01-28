@@ -1,28 +1,33 @@
 import type { RoomConfig, Room, Guessage, Point, Stroke, GamePhase } from "./main.types.js";
+import type { Server, Socket } from "socket.io";
+
+export type EventDependencies = {
+  io: Server;
+  socket: Socket;
+};
+
+export type SimpleCallback = (
+  response: { success: true } | { success: false; error: string }
+) => void;
+
+export type RoomCallback = (
+  response: { success: true } | { success: false; error: string }
+) => void;
 
 export interface ClientToServerEvents {
   // Client sends username they want to set.
   // Server attaches the username to their `socket.data`.
   // Callback to notify of success status.
-  "user:username": (
-    name: string,
-    callback: (response: { success: true } | { success: false; error: string }) => void
-  ) => void;
+  "user:username": (name: string, callback: SimpleCallback) => void;
 
   // Client sends a room config.
   // Server creates the room and joins the client to it.
   // Lists room on public rooms if not set to private.
-  "room:create": (
-    config: RoomConfig,
-    callback: (response: { success: true; room: Room } | { success: false; error: string }) => void
-  ) => void;
+  "room:create": (config: RoomConfig, callback: RoomCallback) => void;
 
   // Client sends room ID.
   // Server joins the socket to the room and broadcasts to the room.
-  "room:join": (
-    roomId: string,
-    callback: (response: { success: true; room: Room } | { success: false; error: string }) => void
-  ) => void;
+  "room:join": (roomId: string, callback: RoomCallback) => void;
 
   // Client clicks leave.
   // Server takes the user out of the room and broadcasts to the room.

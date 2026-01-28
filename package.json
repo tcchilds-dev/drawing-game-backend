@@ -7,8 +7,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx ./src/index.ts",
-    "test": "vitest",
-    "prepare": "husky"
+    "build": "tsc",
+    "test": "pnpm run build && vitest run",
+    "prepare": "ts-patch install && husky"
   },
   "author": "",
   "license": "ISC",
@@ -23,8 +24,9 @@
     "husky": "^9.1.7",
     "prettier": "^3.8.1",
     "socket.io-client": "^4.8.3",
+    "ts-patch": "^3.3.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
+    "typescript": "~5.9.3",
     "typescript-eslint": "^8.54.0",
     "vitest": "^4.0.18"
   },

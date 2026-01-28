@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "./types/event.types.js";
 import type { SocketData } from "./types/main.types.js";
+import { setUsername } from "./handlers/user.js";
 
 const app: Express = express();
 
@@ -14,7 +15,12 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents, SocketData>(httpServer, {
+const io = new Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketData
+>(httpServer, {
   connectionStateRecovery: {
     maxDisconnectionDuration: 1 * 60 * 1000,
     skipMiddlewares: true,
@@ -23,11 +29,14 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, SocketData>(ht
 
 io.on("connection", (socket: Socket) => {
   console.log(`User ${socket.id} connected`);
+
   if (socket.recovered) {
     console.log(`User ${socket.id} successfully recovered`);
   } else {
     console.log(`Error: Session was not recovered`);
   }
+
+  socket.on("user:username", setUsername({ io, socket }));
 });
 
 export { app, httpServer, io };

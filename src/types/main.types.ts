@@ -1,22 +1,24 @@
+import { tags } from "typia";
+
 export interface RoomConfig {
   isPrivate: boolean;
-  maxPlayers: number;
+  maxPlayers: number & tags.Minimum<2> & tags.Maximum<12>;
   wordSelectionSize: 3 | 5;
   wordChoiceTimer: number;
   drawTimer: number;
-  numberOfRounds: number;
+  numberOfRounds: number & tags.Minimum<1> & tags.Maximum<10>;
 }
 
 // Guess + Message
 export type Guessage = {
   playerId: string;
   guessage: string;
-  timestamp: number;
+  timestamp: string & tags.Format<"date-time">;
 };
 
 export interface SocketData {
-  username: string;
-  score: number;
+  username: string | null;
+  score: number | null;
 }
 
 export type User = {
@@ -37,7 +39,10 @@ export interface Room {
   currentRound: number;
 }
 
-export type Point = [x: number, y: number];
+export type Point = [
+  x: number & tags.Minimum<0> & tags.Maximum<1>,
+  y: number & tags.Minimum<0> & tags.Maximum<1>,
+];
 
 export type Stroke = {
   points: Point[];
