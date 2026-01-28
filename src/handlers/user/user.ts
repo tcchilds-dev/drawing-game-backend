@@ -1,5 +1,5 @@
-import type { EventDependencies, SimpleCallback } from "../types/event.types.js";
-import { validateUsername } from "../validation/typia.js";
+import type { EventDependencies, SimpleCallback } from "../../types/event.types.js";
+import { validateUsername } from "../../validation/typia.js";
 
 export function setUsername({ io: _io, socket }: EventDependencies) {
   return async (payload: string, callback: SimpleCallback) => {

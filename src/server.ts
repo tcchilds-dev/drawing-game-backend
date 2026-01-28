@@ -3,7 +3,8 @@ import { createServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "./types/event.types.js";
 import type { SocketData } from "./types/main.types.js";
-import { setUsername } from "./handlers/user.js";
+import { setUsername } from "./handlers/user/user.js";
+import { createRoom } from "./handlers/room/create.js";
 
 const app: Express = express();
 
@@ -37,6 +38,7 @@ io.on("connection", (socket: Socket) => {
   }
 
   socket.on("user:username", setUsername({ io, socket }));
+  socket.on("room:create", createRoom({ io, socket }));
 });
 
 export { app, httpServer, io };

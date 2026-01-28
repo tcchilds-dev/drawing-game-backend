@@ -10,15 +10,29 @@ export type SimpleCallback = (response: {
     success: false;
     error: string;
 }) => void;
+export type SimpleResponse = {
+    success: true;
+} | {
+    success: false;
+    error: string;
+};
+export type RoomResponse = {
+    success: true;
+    room: Room;
+} | {
+    success: false;
+    error: string;
+};
 export type RoomCallback = (response: {
     success: true;
+    room: Room;
 } | {
     success: false;
     error: string;
 }) => void;
 export interface ClientToServerEvents {
     "user:username": (name: string, callback: SimpleCallback) => void;
-    "room:create": (config: RoomConfig, callback: RoomCallback) => void;
+    "room:create": (config: Partial<RoomConfig>, callback: RoomCallback) => void;
     "room:join": (roomId: string, callback: RoomCallback) => void;
     "room:leave": () => void;
     "chat:guessage": (guessage: Guessage) => void;

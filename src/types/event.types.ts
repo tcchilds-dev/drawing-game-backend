@@ -10,8 +10,12 @@ export type SimpleCallback = (
   response: { success: true } | { success: false; error: string }
 ) => void;
 
+export type SimpleResponse = { success: true } | { success: false; error: string };
+
+export type RoomResponse = { success: true; room: Room } | { success: false; error: string };
+
 export type RoomCallback = (
-  response: { success: true } | { success: false; error: string }
+  response: { success: true; room: Room } | { success: false; error: string }
 ) => void;
 
 export interface ClientToServerEvents {
@@ -23,7 +27,7 @@ export interface ClientToServerEvents {
   // Client sends a room config.
   // Server creates the room and joins the client to it.
   // Lists room on public rooms if not set to private.
-  "room:create": (config: RoomConfig, callback: RoomCallback) => void;
+  "room:create": (config: Partial<RoomConfig>, callback: RoomCallback) => void;
 
   // Client sends room ID.
   // Server joins the socket to the room and broadcasts to the room.

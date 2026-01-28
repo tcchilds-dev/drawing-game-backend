@@ -21,7 +21,7 @@ export type User = {
     username: string;
     score: number;
 };
-export type GamePhase = "lobby" | "word-selection" | "drawing" | "round-end" | "game-end";
+export type GamePhase = "waiting" | "word-selection" | "drawing" | "round-end" | "game-end";
 export interface Room {
     id: string;
     config: RoomConfig;
@@ -44,7 +44,7 @@ export type DrawingState = {
     currentArtist: string | null;
     currentWord: string | null;
     correctlyGuessed: User[];
-    startedAt: number;
+    startedAt: number | null;
     completedStrokes: Stroke[];
     activeStroke: Stroke | null;
 };

@@ -27,7 +27,7 @@ export type User = {
   score: number; // socket.data.score
 };
 
-export type GamePhase = "lobby" | "word-selection" | "drawing" | "round-end" | "game-end";
+export type GamePhase = "waiting" | "word-selection" | "drawing" | "round-end" | "game-end";
 
 export interface Room {
   id: string;
@@ -54,7 +54,7 @@ export type DrawingState = {
   currentArtist: string | null;
   currentWord: string | null;
   correctlyGuessed: User[];
-  startedAt: number;
+  startedAt: number | null;
   completedStrokes: Stroke[];
   activeStroke: Stroke | null;
 };
@@ -63,7 +63,7 @@ export const DEFAULT_ROOM_CONFIG: RoomConfig = {
   isPrivate: false,
   maxPlayers: 6,
   wordSelectionSize: 3,
-  wordChoiceTimer: 10,
-  drawTimer: 60,
+  wordChoiceTimer: 10 * 1000,
+  drawTimer: 60 * 1000,
   numberOfRounds: 5,
 };
