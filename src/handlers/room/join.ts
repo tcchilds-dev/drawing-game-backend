@@ -1,6 +1,6 @@
 import type { EventDependencies, RoomCallback } from "../../types/event.types.js";
 import { validateRoomId } from "../../validation/typia.js";
-import { rooms } from "./rooms.js";
+import { convertRoom, rooms } from "./rooms.js";
 import type { User } from "../../types/main.types.js";
 
 export function joinRoom({ io: _io, socket }: EventDependencies) {
@@ -28,8 +28,10 @@ export function joinRoom({ io: _io, socket }: EventDependencies) {
       score: 0,
     };
 
-    room.players.push(user);
+    room.players.set(socket.id, user);
 
-    callback({ success: true, room: room });
+    const convertedRoom = convertRoom(room);
+
+    callback({ success: true, room: convertedRoom });
   };
 }

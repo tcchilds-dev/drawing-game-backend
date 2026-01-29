@@ -1,4 +1,11 @@
-import type { RoomConfig, Room, Guessage, Point, Stroke, GamePhase } from "./main.types.js";
+import type {
+  RoomConfig,
+  Guessage,
+  Point,
+  Stroke,
+  GamePhase,
+  ConvertedRoom,
+} from "./main.types.js";
 import type { Server, Socket } from "socket.io";
 
 export type EventDependencies = {
@@ -12,10 +19,12 @@ export type SimpleCallback = (
 
 export type SimpleResponse = { success: true } | { success: false; error: string };
 
-export type RoomResponse = { success: true; room: Room } | { success: false; error: string };
+export type RoomResponse =
+  | { success: true; room: ConvertedRoom }
+  | { success: false; error: string };
 
 export type RoomCallback = (
-  response: { success: true; room: Room } | { success: false; error: string }
+  response: { success: true; room: ConvertedRoom } | { success: false; error: string }
 ) => void;
 
 export interface ClientToServerEvents {
@@ -70,11 +79,11 @@ export interface ClientToServerEvents {
 
 // TODO: likely incomplete
 export interface ServerToClientEvents {
-  "room:update": (room: Room) => void;
-  "user:joined": (notice: string) => void;
-  "user:left": (notice: string) => void;
-  "user:reconnected": (notice: string) => void;
-  "user:disconnected": (notice: string) => void;
+  "room:update": (room: ConvertedRoom) => void;
+  "user:joined": (userId: string) => void;
+  "user:left": (userId: string) => void;
+  "user:reconnected": (userId: string) => void;
+  "user:disconnected": (userId: string) => void;
   "word:choice": (data: { words: string[] }) => void;
   "stroke:start": (data: { playerId: string; color: string; width: string }) => void;
   "stroke:points": (data: { playerId: string; points: Point[] }) => void;

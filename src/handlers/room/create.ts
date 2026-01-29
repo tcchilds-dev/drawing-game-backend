@@ -8,7 +8,7 @@ import {
   type User,
 } from "../../types/main.types.js";
 import { validateRoomConfig } from "../../validation/typia.js";
-import { rooms } from "./rooms.js";
+import { convertRoom, rooms } from "./rooms.js";
 
 export function createRoom({ io: _io, socket }: EventDependencies) {
   return async (payload: Partial<RoomConfig>, callback: RoomCallback) => {
@@ -51,12 +51,14 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
     const room: Room = {
       id: randomUUID(),
       config: roomConfig,
-      players: [user],
+      players: new Map<string, User>(),
       guessages: [],
       drawingState: startingDrawState,
       phase: "waiting",
       currentRound: 0,
     };
+
+    room.players.set(socket.id, user);
 
     console.log(room);
     console.log(room.id);
@@ -67,6 +69,8 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
 
     socket.join(room.id);
 
-    callback({ success: true, room: room });
+    const convertedRoom = convertRoom(room);
+
+    callback({ success: true, room: convertedRoom });
   };
 }

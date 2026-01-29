@@ -32,7 +32,17 @@ export type GamePhase = "waiting" | "word-selection" | "drawing" | "round-end" |
 export interface Room {
   id: string;
   config: RoomConfig;
-  players: User[];
+  players: Map<string, User>;
+  guessages: Guessage[];
+  drawingState: DrawingState;
+  phase: GamePhase;
+  currentRound: number;
+}
+
+export interface ConvertedRoom {
+  id: string;
+  config: RoomConfig;
+  players: { [k: string]: User };
   guessages: Guessage[];
   drawingState: DrawingState;
   phase: GamePhase;

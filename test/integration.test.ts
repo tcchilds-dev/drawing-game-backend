@@ -14,6 +14,7 @@ import { setUsername } from "../src/handlers/user/user.js";
 import { createRoom } from "../src/handlers/room/create.js";
 import { rooms } from "../src/handlers/room/rooms.js";
 import { joinRoom } from "../src/handlers/room/join.js";
+import { leaveRoom } from "../src/handlers/room/leave.js";
 
 describe("Socket.IO server", () => {
   let io: Server;
@@ -45,6 +46,7 @@ describe("Socket.IO server", () => {
           socket.on("user:username", setUsername({ io, socket }));
           socket.on("room:create", createRoom({ io, socket }));
           socket.on("room:join", joinRoom({ io, socket }));
+          socket.on("room:leave", leaveRoom({ io, socket }));
         });
 
         clientSocketBob = ioClient(`http://localhost:${port}`);
@@ -176,7 +178,7 @@ describe("Socket.IO server", () => {
         expect(room.config.drawTimer).toBe(60_000);
         expect(room.config.numberOfRounds).toBe(5);
 
-        expect(room.players.length).toBe(1);
+        expect(room.players[serverSocketBob.id]).toBeDefined();
 
         expect(serverSocketBob.rooms.size).toBe(2);
         resolve();
@@ -202,7 +204,7 @@ describe("Socket.IO server", () => {
           expect(room.config.drawTimer).toBe(60_000);
           expect(room.config.numberOfRounds).toBe(5);
 
-          expect(room.players.length).toBe(1);
+          expect(room.players[serverSocketBob.id]).toBeDefined();
 
           expect(serverSocketBob.rooms.size).toBe(2);
           resolve();
@@ -236,7 +238,7 @@ describe("Socket.IO server", () => {
           expect(room.config.drawTimer).toBe(60_000);
           expect(room.config.numberOfRounds).toBe(10);
 
-          expect(room.players.length).toBe(1);
+          expect(room.players[serverSocketBob.id]).toBeDefined();
 
           expect(serverSocketBob.rooms.size).toBe(2);
           resolve();
@@ -270,7 +272,7 @@ describe("Socket.IO server", () => {
         expect(room.config.drawTimer).toBe(60_000);
         expect(room.config.numberOfRounds).toBe(5);
 
-        expect(room.players.length).toBe(1);
+        expect(room.players[serverSocketBob.id]).toBeDefined();
 
         expect(serverSocketBob.rooms.size).toBe(2);
         resolve();
@@ -299,7 +301,7 @@ describe("Socket.IO server", () => {
 
           const { room } = response;
 
-          expect(room.players.length).toBe(2);
+          expect(room.players[serverSocketSally.id]).toBeDefined();
           resolve();
         });
       });
@@ -331,6 +333,29 @@ describe("Socket.IO server", () => {
           resolve();
         }
       );
+    });
+  });
+
+  // --- ROOM:LEAVE ---
+
+  it("should remove a user from a room", () => {
+    return new Promise<void>((resolve) => {
+      clientSocketBob.emit("room:create", {}, (response: RoomResponse) => {
+        expect(response.success).toBe(true);
+        if (!response.success) return;
+
+        const roomId = response.room.id;
+        const serverRoom = rooms.get(roomId);
+        expect(serverRoom?.players.has(serverSocketBob.id)).toBe(true);
+
+        clientSocketBob.emit("room:leave");
+
+        setTimeout(() => {
+          expect(serverRoom?.players.has(serverSocketBob.id)).toBe(false);
+          expect(serverSocketBob.rooms.size).toBe(1);
+          resolve();
+        }, 50);
+      });
     });
   });
 });

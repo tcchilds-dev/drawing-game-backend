@@ -1,1 +1,1 @@
-{"version":3,"file":"rooms.js","sourceRoot":"","sources":["../../../../src/handlers/room/rooms.ts"],"names":[],"mappings":"AAEA,MAAM,CAAC,MAAM,KAAK,GAAG,IAAI,GAAG,EAAgB,CAAC"}
+{"version":3,"file":"rooms.js","sourceRoot":"","sources":["../../../../src/handlers/room/rooms.ts"],"names":[],"mappings":"AAEA,MAAM,CAAC,MAAM,KAAK,GAAG,IAAI,GAAG,EAAgB,CAAC;AAE7C,MAAM,UAAU,WAAW,CAAC,IAAU;IACpC,OAAO;QACL,GAAG,IAAI;QACP,OAAO,EAAE,MAAM,CAAC,WAAW,CAAC,IAAI,CAAC,OAAO,CAAC;KAC1C,CAAC;AACJ,CAAC"}

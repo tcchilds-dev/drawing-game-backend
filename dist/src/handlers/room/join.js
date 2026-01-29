@@ -1,5 +1,5 @@
 import { validateRoomId } from "../../validation/typia.js";
-import { rooms } from "./rooms.js";
+import { convertRoom, rooms } from "./rooms.js";
 export function joinRoom({ io: _io, socket }) {
     return async (payload, callback) => {
         if (typeof callback !== "function")
@@ -21,8 +21,9 @@ export function joinRoom({ io: _io, socket }) {
             username: socket.data.username || "Guest",
             score: 0,
         };
-        room.players.push(user);
-        callback({ success: true, room: room });
+        room.players.set(socket.id, user);
+        const convertedRoom = convertRoom(room);
+        callback({ success: true, room: convertedRoom });
     };
 }
 //# sourceMappingURL=join.js.map

@@ -6,6 +6,7 @@ import type { SocketData } from "./types/main.types.js";
 import { setUsername } from "./handlers/user/user.js";
 import { createRoom } from "./handlers/room/create.js";
 import { joinRoom } from "./handlers/room/join.js";
+import { leaveRoom } from "./handlers/room/leave.js";
 
 const app: Express = express();
 
@@ -41,6 +42,7 @@ io.on("connection", (socket: Socket) => {
   socket.on("user:username", setUsername({ io, socket }));
   socket.on("room:create", createRoom({ io, socket }));
   socket.on("room:join", joinRoom({ io, socket }));
+  socket.on("room:leave", leaveRoom({ io, socket }));
 });
 
 export { app, httpServer, io };
