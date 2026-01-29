@@ -6,32 +6,65 @@ import { Server } from "socket.io";
 import { setUsername } from "../src/handlers/user/user.js";
 import { createRoom } from "../src/handlers/room/create.js";
 import { rooms } from "../src/handlers/room/rooms.js";
+import { joinRoom } from "../src/handlers/room/join.js";
 describe("Socket.IO server", () => {
-    let io, serverSocket, clientSocket;
+    let io;
+    let clientSocketBob;
+    let clientSocketSally;
+    let serverSocketBob;
+    let serverSocketSally;
     beforeAll(() => {
         return new Promise((resolve) => {
             const httpServer = createServer();
             io = new Server(httpServer);
             httpServer.listen(() => {
                 const port = httpServer.address().port;
-                clientSocket = ioClient(`http://localhost:${port}`);
+                let connectCount = 0;
+                const checkAllConnected = () => {
+                    console.log("checkAllConnected called");
+                    connectCount++;
+                    if (connectCount === 2)
+                        resolve();
+                };
                 io.on("connection", (socket) => {
-                    serverSocket = socket;
-                    serverSocket.on("user:username", setUsername({ io, socket }));
-                    serverSocket.on("room:create", createRoom({ io, socket }));
+                    socket.on("user:username", setUsername({ io, socket }));
+                    socket.on("room:create", createRoom({ io, socket }));
+                    socket.on("room:join", joinRoom({ io, socket }));
                 });
-                clientSocket.on("connect", resolve);
+                clientSocketBob = ioClient(`http://localhost:${port}`);
+                clientSocketBob.on("connect", () => {
+                    const socket = io.sockets.sockets.get(clientSocketBob.id);
+                    if (!socket)
+                        throw new Error("Server socket not found for Bob");
+                    serverSocketBob = socket;
+                    checkAllConnected();
+                });
+                clientSocketSally = ioClient(`http://localhost:${port}`);
+                clientSocketSally.on("connect", () => {
+                    const socket = io.sockets.sockets.get(clientSocketSally.id);
+                    if (!socket)
+                        throw new Error("Server socket not found for Sally");
+                    serverSocketSally = socket;
+                    checkAllConnected();
+                });
             });
         });
     });
     beforeEach(() => {
-        serverSocket.data.username = null;
-        serverSocket.data.score = null;
+        serverSocketBob.data.username = null;
+        serverSocketSally.data.username = null;
+        serverSocketBob.data.score = null;
+        serverSocketSally.data.score = null;
     });
     afterEach(() => {
-        for (const roomId of serverSocket.rooms) {
-            if (roomId !== serverSocket.id) {
-                serverSocket.leave(roomId);
+        for (const roomId of serverSocketBob.rooms) {
+            if (roomId !== serverSocketBob.id) {
+                serverSocketBob.leave(roomId);
+            }
+        }
+        for (const roomId of serverSocketSally.rooms) {
+            if (roomId !== serverSocketSally.id) {
+                serverSocketSally.leave(roomId);
             }
         }
         rooms.clear();
@@ -39,54 +72,56 @@ describe("Socket.IO server", () => {
     afterAll(() => {
         console.log(rooms);
         io.close();
-        clientSocket.disconnect();
+        clientSocketBob.disconnect();
+        clientSocketSally.disconnect();
     });
     // --- BASIC TESTS ---
     it("should connect successfully", () => {
-        expect(clientSocket.connected).toBe(true);
+        expect(clientSocketBob.connected).toBe(true);
+        expect(clientSocketSally.connected).toBe(true);
     });
     it("should work", () => {
         return new Promise((resolve) => {
-            clientSocket.on("hello", (arg) => {
+            clientSocketBob.on("hello", (arg) => {
                 expect(arg).toEqual("world");
                 resolve();
             });
-            serverSocket.emit("hello", "world");
+            serverSocketBob.emit("hello", "world");
         });
     });
     // --- USER:USERNAME ---
     it("should attach a given username to socket.data", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("user:username", "JohnnyRevolver", (response) => {
+            clientSocketBob.emit("user:username", "JohnnyRevolver", (response) => {
                 expect(response.success).toBe(true);
-                expect(serverSocket.data.username).toBe("JohnnyRevolver");
+                expect(serverSocketBob.data.username).toBe("JohnnyRevolver");
                 resolve();
             });
         });
     });
     it("should reject an invalid username for being too short", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("user:username", "Me", (response) => {
+            clientSocketBob.emit("user:username", "Me", (response) => {
                 expect(response.success).toBe(false);
-                expect(serverSocket.data.username).toBeNull();
+                expect(serverSocketBob.data.username).toBeNull();
                 resolve();
             });
         });
     });
     it("should reject an invalid username for being too long", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("user:username", "LiterallyThousandsOfBees", (response) => {
+            clientSocketBob.emit("user:username", "LiterallyThousandsOfBees", (response) => {
                 expect(response.success).toBe(false);
-                expect(serverSocket.data.username).toBeNull();
+                expect(serverSocketBob.data.username).toBeNull();
                 resolve();
             });
         });
     });
     it("should reject an argument that isn't a string", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("user:username", 7, (response) => {
+            clientSocketBob.emit("user:username", 7, (response) => {
                 expect(response.success).toBe(false);
-                expect(serverSocket.data.username).toBeNull();
+                expect(serverSocketBob.data.username).toBeNull();
                 resolve();
             });
         });
@@ -94,7 +129,7 @@ describe("Socket.IO server", () => {
     // --- ROOM:CREATE ---
     it("should create a room with default config and join the creator to it", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("room:create", {}, (response) => {
+            clientSocketBob.emit("room:create", {}, (response) => {
                 expect(response.success).toBe(true);
                 if (!response.success)
                     return;
@@ -106,15 +141,14 @@ describe("Socket.IO server", () => {
                 expect(room.config.drawTimer).toBe(60_000);
                 expect(room.config.numberOfRounds).toBe(5);
                 expect(room.players.length).toBe(1);
-                expect(serverSocket.rooms.size).toBe(2);
-                serverSocket.leave(room.id);
+                expect(serverSocketBob.rooms.size).toBe(2);
                 resolve();
             });
         });
     });
     it("should fill in config when given partial data", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("room:create", { maxPlayers: 10, wordSelectionSize: 5 }, (response) => {
+            clientSocketBob.emit("room:create", { maxPlayers: 10, wordSelectionSize: 5 }, (response) => {
                 expect(response.success).toBe(true);
                 if (!response.success)
                     return;
@@ -126,15 +160,14 @@ describe("Socket.IO server", () => {
                 expect(room.config.drawTimer).toBe(60_000);
                 expect(room.config.numberOfRounds).toBe(5);
                 expect(room.players.length).toBe(1);
-                expect(serverSocket.rooms.size).toBe(2);
-                serverSocket.leave(room.id);
+                expect(serverSocketBob.rooms.size).toBe(2);
                 resolve();
             });
         });
     });
     it("should accept a full config successfully", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("room:create", {
+            clientSocketBob.emit("room:create", {
                 isPrivate: true,
                 maxPlayers: 9,
                 wordSelectionSize: 5,
@@ -153,24 +186,23 @@ describe("Socket.IO server", () => {
                 expect(room.config.drawTimer).toBe(60_000);
                 expect(room.config.numberOfRounds).toBe(10);
                 expect(room.players.length).toBe(1);
-                expect(serverSocket.rooms.size).toBe(2);
-                serverSocket.leave(room.id);
+                expect(serverSocketBob.rooms.size).toBe(2);
                 resolve();
             });
         });
     });
     it("should reject invalid values for config", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("room:create", { maxPlayers: 15 }, (response) => {
+            clientSocketBob.emit("room:create", { maxPlayers: 15 }, (response) => {
                 expect(response.success).toBe(false);
-                expect(serverSocket.rooms.size).toBe(1);
+                expect(serverSocketBob.rooms.size).toBe(1);
                 resolve();
             });
         });
     });
     it("should ignore invalid config parameters", () => {
         return new Promise((resolve) => {
-            clientSocket.emit("room:create", { myFavouriteNumber: 15 }, (response) => {
+            clientSocketBob.emit("room:create", { myFavouriteNumber: 15 }, (response) => {
                 expect(response.success).toBe(true);
                 if (!response.success)
                     return;
@@ -182,8 +214,51 @@ describe("Socket.IO server", () => {
                 expect(room.config.drawTimer).toBe(60_000);
                 expect(room.config.numberOfRounds).toBe(5);
                 expect(room.players.length).toBe(1);
-                expect(serverSocket.rooms.size).toBe(2);
-                serverSocket.leave(room.id);
+                expect(serverSocketBob.rooms.size).toBe(2);
+                resolve();
+            });
+        });
+    });
+    // --- ROOM:JOIN ---
+    it("should join a user to a room", () => {
+        return new Promise((resolve) => {
+            clientSocketBob.emit("room:create", {}, (response) => {
+                expect(response.success).toBe(true);
+                if (!response.success) {
+                    console.log("room creation failed");
+                    return;
+                }
+                const { room } = response;
+                clientSocketSally.emit("room:join", room.id, (response) => {
+                    expect(response.success).toBe(true);
+                    if (!response.success) {
+                        return;
+                    }
+                    const { room } = response;
+                    expect(room.players.length).toBe(2);
+                    resolve();
+                });
+            });
+        });
+    });
+    it("should reject an invalid room code", () => {
+        return new Promise((resolve) => {
+            clientSocketSally.emit("room:join", "not a uuid", (response) => {
+                expect(response.success).toBe(false);
+                if (response.success !== false)
+                    return;
+                expect(response.error).toBe("room ID is invalid");
+                resolve();
+            });
+        });
+    });
+    it("should reject a room that doesn't exist", () => {
+        return new Promise((resolve) => {
+            clientSocketSally.emit("room:join", "9ea8adb9-62b9-444f-8f40-8cfa079aceb7", (response) => {
+                expect(response.success).toBe(false);
+                if (response.success !== false)
+                    return;
+                expect(response.error).toBe("room does not exist");
                 resolve();
             });
         });
