@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { EventDependencies, RoomCallback } from "../../types/event.types.js";
+import type { EventDependencies, RoomCallback } from "../types/event.types.js";
 import {
   DEFAULT_ROOM_CONFIG,
   type DrawingState,
   type Room,
   type RoomConfig,
   type User,
-} from "../../types/main.types.js";
-import { validateRoomConfig } from "../../validation/typia.js";
+} from "../types/main.types.js";
+import { validateRoomConfig } from "../validation/typia.js";
 import { convertRoom, rooms } from "./rooms.js";
 
 export function createRoom({ io: _io, socket }: EventDependencies) {
@@ -41,7 +41,6 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
 
     const startingDrawState: DrawingState = {
       currentArtist: null,
-      currentWord: null,
       correctlyGuessed: [],
       startedAt: null,
       completedStrokes: [],
@@ -50,11 +49,12 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
 
     const room: Room = {
       id: randomUUID(),
+      creator: socket.id,
       config: roomConfig,
       players: new Map<string, User>(),
       guessages: [],
       drawingState: startingDrawState,
-      phase: "waiting",
+      phase: "lobby",
       currentRound: 0,
     };
 

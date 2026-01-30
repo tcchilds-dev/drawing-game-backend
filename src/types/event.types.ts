@@ -17,15 +17,21 @@ export type SimpleCallback = (
   response: { success: true } | { success: false; error: string }
 ) => void;
 
+export type RoomCallback = (
+  response: { success: true; room: ConvertedRoom } | { success: false; error: string }
+) => void;
+
+export type WordCallback = (
+  response: { success: true; word: string } | { success: false; error: string }
+) => void;
+
 export type SimpleResponse = { success: true } | { success: false; error: string };
 
 export type RoomResponse =
   | { success: true; room: ConvertedRoom }
   | { success: false; error: string };
 
-export type RoomCallback = (
-  response: { success: true; room: ConvertedRoom } | { success: false; error: string }
-) => void;
+export type WordResponse = { success: true; word: string } | { success: false; error: string };
 
 export interface ClientToServerEvents {
   // Client sends username they want to set.
@@ -46,6 +52,10 @@ export interface ClientToServerEvents {
   // Server takes the user out of the room and broadcasts to the room.
   "room:leave": () => void;
 
+  // Client clicks start and sends the room ID.
+  // Server starts the game and sends back success.
+  "game:start": (roomId: string, callback: SimpleCallback) => void;
+
   // Client sends a message in the chat.
   // Server checks to see if it matches the secret word.
   // If it does, add them to the correct guessers and hide the message.
@@ -54,7 +64,7 @@ export interface ClientToServerEvents {
 
   // Client makes a choice from supplied words.
   // Server sets it as the currentWord and broadcasts to room.
-  "word:choice": (word: string) => void;
+  "word:choice": (word: string, callback: WordCallback) => void;
 
   // Client presses mouse down.
   // Server starts activeStroke.
@@ -77,7 +87,7 @@ export interface ClientToServerEvents {
   "canvas:clear": () => void;
 }
 
-// TODO: likely incomplete
+// TODO: prune or add to these based on usage
 export interface ServerToClientEvents {
   "room:update": (room: ConvertedRoom) => void;
   "user:joined": (userId: string) => void;

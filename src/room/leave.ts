@@ -1,5 +1,6 @@
-import type { EventDependencies } from "../../types/event.types.js";
+import type { EventDependencies } from "../types/event.types.js";
 import { rooms } from "./rooms.js";
+import { gameManager } from "../game/GameManager.js";
 
 export function leaveRoom({ io, socket }: EventDependencies) {
   return async () => {
@@ -22,6 +23,8 @@ export function leaveRoom({ io, socket }: EventDependencies) {
       console.log("could not remove player from room");
       return;
     }
+
+    gameManager.handlePlayerLeave(roomId, socket.id);
 
     io.to(roomId).emit("user:left", socket.id);
   };

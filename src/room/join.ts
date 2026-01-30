@@ -1,7 +1,7 @@
-import type { EventDependencies, RoomCallback } from "../../types/event.types.js";
-import { validateRoomId } from "../../validation/typia.js";
+import type { EventDependencies, RoomCallback } from "../types/event.types.js";
+import { validateRoomId } from "../validation/typia.js";
 import { convertRoom, rooms } from "./rooms.js";
-import type { User } from "../../types/main.types.js";
+import type { User } from "../types/main.types.js";
 
 export function joinRoom({ io: _io, socket }: EventDependencies) {
   return async (payload: string, callback: RoomCallback) => {

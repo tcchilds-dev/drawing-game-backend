@@ -3,10 +3,14 @@ import { createServer } from "node:http";
 import { Server, type Socket } from "socket.io";
 import type { ClientToServerEvents, ServerToClientEvents } from "./types/event.types.js";
 import type { SocketData } from "./types/main.types.js";
-import { setUsername } from "./handlers/user/user.js";
-import { createRoom } from "./handlers/room/create.js";
-import { joinRoom } from "./handlers/room/join.js";
-import { leaveRoom } from "./handlers/room/leave.js";
+import { setUsername } from "./user/user.js";
+import { createRoom } from "./room/create.js";
+import { joinRoom } from "./room/join.js";
+import { leaveRoom } from "./room/leave.js";
+import { gameManager } from "./game/GameManager.js";
+import { startGame } from "./game/start.js";
+import { handleGuessage } from "./game/guessage.js";
+import { chooseWord } from "./game/word.js";
 
 const app: Express = express();
 
@@ -30,6 +34,8 @@ const io = new Server<
   },
 });
 
+gameManager.setIO(io);
+
 io.on("connection", (socket: Socket) => {
   console.log(`User ${socket.id} connected`);
 
@@ -39,10 +45,18 @@ io.on("connection", (socket: Socket) => {
     console.log(`Error: Session was not recovered`);
   }
 
+  // User Events
   socket.on("user:username", setUsername({ io, socket }));
+
+  // Room Events
   socket.on("room:create", createRoom({ io, socket }));
   socket.on("room:join", joinRoom({ io, socket }));
   socket.on("room:leave", leaveRoom({ io, socket }));
+
+  // Game Events
+  socket.on("game:start", startGame({ io, socket }));
+  socket.on("chat:guessage", handleGuessage({ io, socket }));
+  socket.on("word:choice", chooseWord({ io, socket }));
 });
 
 export { app, httpServer, io };

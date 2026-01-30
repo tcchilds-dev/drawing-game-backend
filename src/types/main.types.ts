@@ -24,13 +24,14 @@ export interface SocketData {
 export type User = {
   id: string; // socket.id
   username: string; // socket.data.username
-  score: number; // socket.data.score
+  score: number;
 };
 
-export type GamePhase = "waiting" | "word-selection" | "drawing" | "round-end" | "game-end";
+export type GamePhase = "lobby" | "word-selection" | "drawing" | "round-end";
 
 export interface Room {
   id: string;
+  creator: string; // socket.id of creator
   config: RoomConfig;
   players: Map<string, User>;
   guessages: Guessage[];
@@ -62,7 +63,6 @@ export type Stroke = {
 
 export type DrawingState = {
   currentArtist: string | null;
-  currentWord: string | null;
   correctlyGuessed: User[];
   startedAt: number | null;
   completedStrokes: Stroke[];

@@ -10,6 +10,20 @@ export type SimpleCallback = (response: {
     success: false;
     error: string;
 }) => void;
+export type RoomCallback = (response: {
+    success: true;
+    room: ConvertedRoom;
+} | {
+    success: false;
+    error: string;
+}) => void;
+export type WordCallback = (response: {
+    success: true;
+    word: string;
+} | {
+    success: false;
+    error: string;
+}) => void;
 export type SimpleResponse = {
     success: true;
 } | {
@@ -23,20 +37,21 @@ export type RoomResponse = {
     success: false;
     error: string;
 };
-export type RoomCallback = (response: {
+export type WordResponse = {
     success: true;
-    room: ConvertedRoom;
+    word: string;
 } | {
     success: false;
     error: string;
-}) => void;
+};
 export interface ClientToServerEvents {
     "user:username": (name: string, callback: SimpleCallback) => void;
     "room:create": (config: Partial<RoomConfig>, callback: RoomCallback) => void;
     "room:join": (roomId: string, callback: RoomCallback) => void;
     "room:leave": () => void;
+    "game:start": (roomId: string, callback: SimpleCallback) => void;
     "chat:guessage": (guessage: Guessage) => void;
-    "word:choice": (word: string) => void;
+    "word:choice": (word: string, callback: WordCallback) => void;
     "stroke:start": (data: {
         color: string;
         width: number;
