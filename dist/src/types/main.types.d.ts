@@ -14,10 +14,12 @@ export type Guessage = {
 };
 export interface SocketData {
     username: string | null;
+    playerId: string | null;
     score: number | null;
 }
 export type User = {
     id: string;
+    playerId: string;
     username: string;
     score: number;
 };

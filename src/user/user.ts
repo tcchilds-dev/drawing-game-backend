@@ -1,13 +1,13 @@
 import type { EventDependencies, SimpleCallback } from "../types/event.types.js";
-import { validateUsername } from "../validation/typia.js";
+import { validateUsernamePayload } from "../validation/typia.js";
 
 export function setUsername({ io: _io, socket }: EventDependencies) {
-  return async (payload: string, callback: SimpleCallback) => {
+  return async (payload: { username: string; playerId: string }, callback: SimpleCallback) => {
     if (typeof callback !== "function") {
       return;
     }
 
-    const result = validateUsername(payload);
+    const result = validateUsernamePayload(payload);
 
     if (result.success === false) {
       callback({ success: false, error: "failed to validate username" });
@@ -15,7 +15,8 @@ export function setUsername({ io: _io, socket }: EventDependencies) {
       return;
     }
 
-    socket.data.username = payload;
+    socket.data.username = payload.username;
+    socket.data.playerId = payload.playerId;
 
     callback({ success: true });
   };

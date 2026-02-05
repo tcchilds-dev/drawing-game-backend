@@ -1,6 +1,10 @@
 import typia, { tags } from "typia";
 import type { RoomConfig, Guessage, Point } from "../types/main.types.js";
 export declare const validateUsername: (input: unknown) => typia.IValidation<string & tags.MinLength<3> & tags.MaxLength<20>>;
+export declare const validateUsernamePayload: (input: unknown) => typia.IValidation<{
+    username: string & tags.MinLength<3> & tags.MaxLength<20>;
+    playerId: string & tags.Format<"uuid">;
+}>;
 export declare const validateRoomConfig: (input: unknown) => typia.IValidation<Partial<RoomConfig>>;
 export declare const validateRoomId: (input: unknown) => typia.IValidation<string & tags.Format<"uuid">>;
 export declare const validateGuessage: (input: unknown) => typia.IValidation<Guessage>;

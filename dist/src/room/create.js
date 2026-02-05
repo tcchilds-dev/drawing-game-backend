@@ -14,6 +14,10 @@ export function createRoom({ io: _io, socket }) {
             console.log(result.errors);
             return;
         }
+        if (!socket.data.playerId) {
+            callback({ success: false, error: "playerId not set" });
+            return;
+        }
         const roomConfig = {
             ...DEFAULT_ROOM_CONFIG,
             ...payload,
@@ -21,6 +25,7 @@ export function createRoom({ io: _io, socket }) {
         console.log(roomConfig);
         const user = {
             id: socket.id,
+            playerId: socket.data.playerId,
             username: socket.data.username || "Guest",
             score: 0,
         };

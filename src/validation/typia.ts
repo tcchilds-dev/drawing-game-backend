@@ -7,6 +7,14 @@ export const validateUsername: (
   string & tags.MinLength<3> & tags.MaxLength<20>
 >();
 
+export const validateUsernamePayload: (input: unknown) => typia.IValidation<{
+  username: string & tags.MinLength<3> & tags.MaxLength<20>;
+  playerId: string & tags.Format<"uuid">;
+}> = typia.createValidate<{
+  username: string & tags.MinLength<3> & tags.MaxLength<20>;
+  playerId: string & tags.Format<"uuid">;
+}>();
+
 export const validateRoomConfig: (input: unknown) => typia.IValidation<Partial<RoomConfig>> =
   typia.createValidate<Partial<RoomConfig>>();
 

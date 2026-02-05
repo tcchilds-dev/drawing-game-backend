@@ -6,7 +6,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx ./src/index.ts",
+    "start": "node ./dist/src/index.js",
     "build": "tsc",
     "test": "pnpm run build && vitest run",
     "prepare": "ts-patch install && husky"

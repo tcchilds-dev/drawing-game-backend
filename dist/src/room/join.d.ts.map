@@ -1,1 +1,1 @@
-{"version":3,"file":"join.d.ts","sourceRoot":"","sources":["../../../src/room/join.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,iBAAiB,EAAE,YAAY,EAAE,MAAM,yBAAyB,CAAC;AAK/E,wBAAgB,QAAQ,CAAC,EAAE,EAAE,EAAE,GAAG,EAAE,MAAM,EAAE,EAAE,iBAAiB,IAC/C,SAAS,MAAM,EAAE,UAAU,YAAY,mBA8BtD"}
+{"version":3,"file":"join.d.ts","sourceRoot":"","sources":["../../../src/room/join.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,iBAAiB,EAAE,YAAY,EAAE,MAAM,yBAAyB,CAAC;AAM/E,wBAAgB,QAAQ,CAAC,EAAE,EAAE,EAAE,MAAM,EAAE,EAAE,iBAAiB,IAC1C,SAAS,MAAM,EAAE,UAAU,YAAY,mBA6DtD"}

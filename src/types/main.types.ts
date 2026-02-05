@@ -18,11 +18,13 @@ export type Guessage = {
 
 export interface SocketData {
   username: string | null;
+  playerId: string | null;
   score: number | null;
 }
 
 export type User = {
   id: string; // socket.id
+  playerId: string; // persistent client ID (survives refresh)
   username: string; // socket.data.username
   score: number;
 };

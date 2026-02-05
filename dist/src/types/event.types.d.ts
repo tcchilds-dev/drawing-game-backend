@@ -60,6 +60,7 @@ export interface ClientToServerEvents {
         points: Point[];
     }) => void;
     "stroke:end": () => void;
+    "canvas:undo": () => void;
     "canvas:clear": () => void;
 }
 export interface ServerToClientEvents {

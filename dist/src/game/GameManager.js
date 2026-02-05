@@ -60,7 +60,14 @@ class GameManager {
         const artistId = gameState.artistQueue[gameState.currentArtistIndex];
         room.phase = "word-selection";
         room.drawingState.currentArtist = artistId;
+        room.drawingState.correctlyGuessed = [];
+        room.drawingState.completedStrokes = [];
+        room.drawingState.activeStroke = null;
         gameState.wordChoices = this.pickRandomWords(room.config.wordSelectionSize);
+        console.log(`Starting word selection for room ${roomId}, artist: ${artistId}`);
+        console.log(`Word choices: ${gameState.wordChoices}`);
+        this.broadcastRoomUpdate(roomId);
+        this.io?.to(roomId).emit("canvas:clear");
         this.io?.to(roomId).emit("round:start", {
             round: room.currentRound,
             artistId,
@@ -213,6 +220,16 @@ class GameManager {
             [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
         }
         return shuffled;
+    }
+    clearGame(roomId) {
+        const gameState = this.games.get(roomId);
+        if (!gameState)
+            return;
+        if (gameState.timer) {
+            clearTimeout(gameState.timer);
+        }
+        this.games.delete(roomId);
+        console.log(`Cleared game state for room ${roomId}`);
     }
     clearAllGames() {
         for (const [_, gameState] of this.games) {

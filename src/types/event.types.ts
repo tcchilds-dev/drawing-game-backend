@@ -81,6 +81,8 @@ export interface ClientToServerEvents {
   // Server broadcasts drawingState.
   "stroke:end": () => void;
 
+  "canvas:undo": () => void;
+
   // Client clicks clear.
   // Server clears activeStroke and completedStrokes.
   // Server broadcasts drawingState.

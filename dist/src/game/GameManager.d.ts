@@ -24,6 +24,7 @@ declare class GameManager {
     private calculatePoints;
     private pickRandomWords;
     private shuffleArray;
+    clearGame(roomId: string): void;
     clearAllGames(): void;
     handlePlayerLeave(roomId: string, playerId: string): void;
 }

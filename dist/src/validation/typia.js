@@ -35,6 +35,54 @@ export const validateUsername = (() => { const __is = input => "string" === type
         data: input
     };
 }); })();
+export const validateUsernamePayload = (() => { const _io0 = input => "string" === typeof input.username && (3 <= input.username.length && input.username.length <= 20) && ("string" === typeof input.playerId && __typia_transform__isFormatUuid._isFormatUuid(input.playerId)); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.username && (3 <= input.username.length || _report(_exceptionable, {
+        path: _path + ".username",
+        expected: "string & MinLength<3>",
+        value: input.username
+    })) && (input.username.length <= 20 || _report(_exceptionable, {
+        path: _path + ".username",
+        expected: "string & MaxLength<20>",
+        value: input.username
+    })) || _report(_exceptionable, {
+        path: _path + ".username",
+        expected: "(string & MinLength<3> & MaxLength<20>)",
+        value: input.username
+    }), "string" === typeof input.playerId && (__typia_transform__isFormatUuid._isFormatUuid(input.playerId) || _report(_exceptionable, {
+        path: _path + ".playerId",
+        expected: "string & Format<\"uuid\">",
+        value: input.playerId
+    })) || _report(_exceptionable, {
+        path: _path + ".playerId",
+        expected: "(string & Format<\"uuid\">)",
+        value: input.playerId
+    })].every(flag => flag); const __is = input => "object" === typeof input && null !== input && _io0(input); let errors; let _report; return __typia_transform__createStandardSchema._createStandardSchema(input => {
+    if (false === __is(input)) {
+        errors = [];
+        _report = __typia_transform__validateReport._validateReport(errors);
+        ((input, _path, _exceptionable = true) => ("object" === typeof input && null !== input || _report(true, {
+            path: _path + "",
+            expected: "__type",
+            value: input
+        })) && _vo0(input, _path + "", true) || _report(true, {
+            path: _path + "",
+            expected: "__type",
+            value: input
+        }))(input, "$input", true);
+        const success = 0 === errors.length;
+        return success ? {
+            success,
+            data: input
+        } : {
+            success,
+            errors,
+            data: input
+        };
+    }
+    return {
+        success: true,
+        data: input
+    };
+}); })();
 export const validateRoomConfig = (() => { const _io0 = input => (undefined === input.isPrivate || "boolean" === typeof input.isPrivate) && (undefined === input.maxPlayers || "number" === typeof input.maxPlayers && (2 <= input.maxPlayers && input.maxPlayers <= 12)) && (undefined === input.wordSelectionSize || 3 === input.wordSelectionSize || 5 === input.wordSelectionSize) && (undefined === input.wordChoiceTimer || "number" === typeof input.wordChoiceTimer) && (undefined === input.drawTimer || "number" === typeof input.drawTimer) && (undefined === input.numberOfRounds || "number" === typeof input.numberOfRounds && (1 <= input.numberOfRounds && input.numberOfRounds <= 10)); const _vo0 = (input, _path, _exceptionable = true) => [undefined === input.isPrivate || "boolean" === typeof input.isPrivate || _report(_exceptionable, {
         path: _path + ".isPrivate",
         expected: "(boolean | undefined)",
