@@ -1,16 +1,25 @@
 import type { Server } from "socket.io";
-import type { Room } from "../types/main.types.js";
-import { rooms, convertRoom } from "../room/rooms.js";
+import type { FinalStanding, Room, User } from "../types/main.types.js";
+import { rooms, convertRoom, deleteRoom } from "../room/rooms.js";
+import { WORD_LIST } from "./wordList.js";
 
 type Timer = ReturnType<typeof setTimeout>;
 
+interface DisconnectGraceState {
+  socketId: string;
+  skipTimer: Timer | null;
+  removalTimer: Timer | null;
+}
+
 interface GameState {
-  artistQueue: string[]; // players IDs in drawing order
+  artistQueue: string[]; // playerIds in drawing order
   currentArtistIndex: number;
   currentWord: string | null;
   wordChoices: string[];
+  usedWordKeys: Set<string>;
   timer: Timer | null;
   timerEndsAt: number | null;
+  disconnectedPlayers: Map<string, DisconnectGraceState>; // key: playerId
 }
 
 class GameManager {
@@ -27,12 +36,9 @@ class GameManager {
     return GameManager.instance;
   }
 
-  // Call once during server setup
   setIO(io: Server): void {
     this.io = io;
   }
-
-  // --- Game Lifecycle ---
 
   startGame(roomId: string): { success: boolean; error?: string } {
     const room = rooms.get(roomId);
@@ -40,14 +46,22 @@ class GameManager {
     if (room.players.size < 2) return { success: false, error: "need at least 2 players to start" };
     if (room.phase !== "lobby") return { success: false, error: "game already started" };
 
-    const playerIds = Array.from(room.players.keys());
+    // New game starts with fresh scores.
+    for (const player of room.players.values()) {
+      player.score = 0;
+    }
+
+    const queue = this.buildArtistQueue(room);
+
     const gameState: GameState = {
-      artistQueue: playerIds,
+      artistQueue: queue,
       currentArtistIndex: 0,
       currentWord: null,
       wordChoices: [],
+      usedWordKeys: new Set<string>(),
       timer: null,
       timerEndsAt: null,
+      disconnectedPlayers: new Map<string, DisconnectGraceState>(),
     };
 
     this.games.set(roomId, gameState);
@@ -63,36 +77,62 @@ class GameManager {
     if (!room || !gameState) return;
 
     this.clearTimer(roomId);
+    this.clearDisconnectTimers(gameState);
+
+    const finalStandings: FinalStanding[] = Array.from(room.players.values())
+      .map((player) => ({
+        playerId: player.playerId,
+        username: player.username,
+        score: player.score,
+      }))
+      .sort((a, b) => b.score - a.score);
+
     room.phase = "lobby";
+    room.currentRound = 0;
+    room.guessages = [];
+    room.drawingState.currentArtist = null;
+    room.drawingState.correctlyGuessed = [];
+    room.drawingState.startedAt = null;
+    room.drawingState.completedStrokes = [];
+    room.drawingState.activeStroke = null;
 
-    const finalScores: Record<string, number> = {};
-    for (const [id, player] of room.players) {
-      finalScores[id] = player.score;
-    }
-
-    this.io?.to(roomId).emit("game:end", { finalScores });
+    this.io?.to(roomId).emit("canvas:clear");
+    this.io?.to(roomId).emit("game:end", { finalStandings });
     this.games.delete(roomId);
-  }
 
-  // --- Phase Transitions ---
+    this.broadcastRoomUpdate(roomId);
+  }
 
   private startWordSelection(roomId: string): void {
     const room = rooms.get(roomId);
     const gameState = this.games.get(roomId);
     if (!room || !gameState) return;
 
-    const artistId = gameState.artistQueue[gameState.currentArtistIndex];
+    if (gameState.artistQueue.length === 0) {
+      this.endGame(roomId);
+      return;
+    }
+
+    const artistPlayerId = gameState.artistQueue[gameState.currentArtistIndex];
+
+    if (!this.isPlayerConnected(room, artistPlayerId)) {
+      this.advanceToNextTurn(roomId);
+      return;
+    }
 
     room.phase = "word-selection";
-    room.drawingState.currentArtist = artistId;
+    room.drawingState.currentArtist = artistPlayerId;
     room.drawingState.correctlyGuessed = [];
+    room.drawingState.startedAt = null;
+    room.guessages = [];
 
     room.drawingState.completedStrokes = [];
     room.drawingState.activeStroke = null;
 
-    gameState.wordChoices = this.pickRandomWords(room.config.wordSelectionSize);
+    gameState.currentWord = null;
+    gameState.wordChoices = this.pickRandomWords(room.config.wordSelectionSize, gameState.usedWordKeys);
 
-    console.log(`Starting word selection for room ${roomId}, artist: ${artistId}`);
+    console.log(`Starting word selection for room ${roomId}, artist: ${artistPlayerId}`);
     console.log(`Word choices: ${gameState.wordChoices}`);
 
     this.broadcastRoomUpdate(roomId);
@@ -101,13 +141,21 @@ class GameManager {
 
     this.io?.to(roomId).emit("round:start", {
       round: room.currentRound,
-      artistId,
+      artistId: artistPlayerId,
     });
 
-    this.io?.to(artistId).emit("word:choice", { words: gameState.wordChoices });
+    const artistSocketId = this.getSocketIdByPlayerId(room, artistPlayerId);
+    if (artistSocketId) {
+      this.io?.to(artistSocketId).emit("word:choice", { words: gameState.wordChoices });
+    }
 
     this.startTimer(roomId, room.config.wordChoiceTimer, () => {
-      this.selectWord(roomId, artistId, gameState.wordChoices[0]);
+      const fallbackWord = gameState.wordChoices[0];
+      if (fallbackWord) {
+        this.selectWord(roomId, artistPlayerId, fallbackWord);
+      } else {
+        this.advanceToNextTurn(roomId);
+      }
     });
   }
 
@@ -117,12 +165,25 @@ class GameManager {
     if (!room || !gameState) return null;
     if (room.phase !== "word-selection") return null;
     if (room.drawingState.currentArtist !== playerId) return null;
-    if (!gameState.wordChoices.includes(word)) return null;
+
+    const matchingChoice = gameState.wordChoices.find((choice) => choice.toLowerCase() === word.toLowerCase());
+    if (!matchingChoice) return null;
 
     this.clearTimer(roomId);
-    gameState.currentWord = word;
+
+    gameState.currentWord = matchingChoice;
+    gameState.usedWordKeys.add(matchingChoice.toLowerCase());
+
+    const maskedWord = this.maskWord(matchingChoice);
+    this.io?.to(roomId).emit("word:mask", { maskedWord });
+
+    const artistSocketId = this.getSocketIdByPlayerId(room, playerId);
+    if (artistSocketId) {
+      this.io?.to(artistSocketId).emit("word:selected", { word: matchingChoice });
+    }
+
     this.startDrawingPhase(roomId);
-    return word;
+    return matchingChoice;
   }
 
   private startDrawingPhase(roomId: string): void {
@@ -157,7 +218,8 @@ class GameManager {
       scores,
     });
 
-    // Brief pause before next round
+    this.broadcastRoomUpdate(roomId);
+
     setTimeout(() => this.advanceToNextTurn(roomId), 3000);
   }
 
@@ -166,19 +228,30 @@ class GameManager {
     const gameState = this.games.get(roomId);
     if (!room || !gameState) return;
 
-    gameState.currentArtistIndex++;
-
-    // Check if we've gone through all players this round
-    if (gameState.currentArtistIndex >= gameState.artistQueue.length) {
-      gameState.currentArtistIndex = 0;
-      room.currentRound++;
-
-      // Check if game is over
-      if (room.currentRound > room.config.numberOfRounds) {
-        this.endGame(roomId);
-        return;
-      }
+    if (gameState.artistQueue.length === 0) {
+      this.endGame(roomId);
+      return;
     }
+
+    const queueLength = gameState.artistQueue.length;
+    let attempts = 0;
+
+    do {
+      gameState.currentArtistIndex++;
+
+      if (gameState.currentArtistIndex >= queueLength) {
+        gameState.currentArtistIndex = 0;
+        room.currentRound++;
+
+        if (room.currentRound > room.config.numberOfRounds) {
+          this.endGame(roomId);
+          return;
+        }
+      }
+
+      attempts++;
+      if (attempts >= queueLength) break;
+    } while (!this.isPlayerConnected(room, gameState.artistQueue[gameState.currentArtistIndex]));
 
     this.startWordSelection(roomId);
   }
@@ -189,13 +262,13 @@ class GameManager {
     if (!room || room.phase !== "drawing" || !gameState) return false;
     if (room.drawingState.currentArtist === playerId) return false;
 
-    const alreadyGuessed = room.drawingState.correctlyGuessed.some((u) => u.id === playerId);
+    const alreadyGuessed = room.drawingState.correctlyGuessed.some((u) => u.playerId === playerId);
     if (alreadyGuessed) return false;
 
     const isCorrect = guess.toLowerCase().trim() === gameState.currentWord?.toLowerCase();
     if (!isCorrect) return false;
 
-    const player = room.players.get(playerId);
+    const player = this.getUserByPlayerId(room, playerId);
     if (!player) return false;
 
     const pointsEarned = this.calculatePoints(room);
@@ -207,16 +280,15 @@ class GameManager {
       username: player.username,
     });
 
-    // End round early if everyone guessed correctly
-    const nonArtistCount = room.players.size - 1;
+    this.broadcastRoomUpdate(roomId);
+
+    const nonArtistCount = Math.max(0, room.players.size - 1);
     if (room.drawingState.correctlyGuessed.length >= nonArtistCount) {
       this.endRound(roomId);
     }
 
     return true;
   }
-
-  // --- Timer Helpers ---
 
   private startTimer(roomId: string, duration: number, onComplete: () => void): void {
     const gameState = this.games.get(roomId);
@@ -246,8 +318,6 @@ class GameManager {
     this.io?.to(roomId).emit("timer:sync", { remaining, phase: room.phase });
   }
 
-  // --- Utility ---
-
   private broadcastRoomUpdate(roomId: string): void {
     const room = rooms.get(roomId);
     if (!room) return;
@@ -261,10 +331,10 @@ class GameManager {
     return Math.round(100 + 400 * timeRatio);
   }
 
-  private pickRandomWords(count: number): string[] {
-    // TODO: replace with actual word list
-    const wordList = ["apple", "house", "guitar", "elephant", "pizza", "rocket", "wizard"];
-    return this.shuffleArray(wordList).slice(0, count);
+  private pickRandomWords(count: number, usedWordKeys: Set<string>): string[] {
+    const freshWords = WORD_LIST.filter((word) => !usedWordKeys.has(word.toLowerCase()));
+    const source = freshWords.length >= count ? freshWords : WORD_LIST;
+    return this.shuffleArray(source).slice(0, Math.min(count, source.length));
   }
 
   private shuffleArray<T>(array: T[]): T[] {
@@ -276,6 +346,54 @@ class GameManager {
     return shuffled;
   }
 
+  private maskWord(word: string): string {
+    return word
+      .split("")
+      .map((char) => (char === " " ? " " : "_"))
+      .join("");
+  }
+
+  private buildArtistQueue(room: Room): string[] {
+    const seen = new Set<string>();
+    const queue: string[] = [];
+
+    for (const player of room.players.values()) {
+      if (seen.has(player.playerId)) continue;
+      seen.add(player.playerId);
+      queue.push(player.playerId);
+    }
+
+    return queue;
+  }
+
+  private getUserByPlayerId(room: Room, playerId: string): User | null {
+    for (const player of room.players.values()) {
+      if (player.playerId === playerId) return player;
+    }
+    return null;
+  }
+
+  private getSocketIdByPlayerId(room: Room, playerId: string): string | null {
+    for (const [socketId, player] of room.players) {
+      if (player.playerId === playerId) return socketId;
+    }
+    return null;
+  }
+
+  private isPlayerConnected(room: Room, playerId: string): boolean {
+    const socketId = this.getSocketIdByPlayerId(room, playerId);
+    if (!socketId) return false;
+    return this.io?.sockets.sockets.has(socketId) ?? false;
+  }
+
+  private clearDisconnectTimers(gameState: GameState): void {
+    for (const graceState of gameState.disconnectedPlayers.values()) {
+      if (graceState.skipTimer) clearTimeout(graceState.skipTimer);
+      if (graceState.removalTimer) clearTimeout(graceState.removalTimer);
+    }
+    gameState.disconnectedPlayers.clear();
+  }
+
   clearGame(roomId: string): void {
     const gameState = this.games.get(roomId);
     if (!gameState) return;
@@ -283,6 +401,9 @@ class GameManager {
     if (gameState.timer) {
       clearTimeout(gameState.timer);
     }
+
+    this.clearDisconnectTimers(gameState);
+
     this.games.delete(roomId);
     console.log(`Cleared game state for room ${roomId}`);
   }
@@ -292,29 +413,159 @@ class GameManager {
       if (gameState.timer) {
         clearTimeout(gameState.timer);
       }
+      this.clearDisconnectTimers(gameState);
     }
     this.games.clear();
   }
-
-  // --- Player Events ---
 
   handlePlayerLeave(roomId: string, playerId: string): void {
     const room = rooms.get(roomId);
     const gameState = this.games.get(roomId);
     if (!room || !gameState) return;
 
-    // If current artist left, skip to next turn
+    const disconnectGrace = gameState.disconnectedPlayers.get(playerId);
+    if (disconnectGrace?.skipTimer) clearTimeout(disconnectGrace.skipTimer);
+    if (disconnectGrace?.removalTimer) clearTimeout(disconnectGrace.removalTimer);
+    gameState.disconnectedPlayers.delete(playerId);
+
     if (room.drawingState.currentArtist === playerId) {
-      this.endRound(roomId);
+      if (room.phase === "word-selection") {
+        this.clearTimer(roomId);
+        this.advanceToNextTurn(roomId);
+      } else if (room.phase === "drawing") {
+        this.endRound(roomId);
+      }
     }
 
-    // Remove from artist queue
-    gameState.artistQueue = gameState.artistQueue.filter((id) => id !== playerId);
+    const removedIndex = gameState.artistQueue.findIndex((id) => id === playerId);
+    if (removedIndex !== -1) {
+      gameState.artistQueue.splice(removedIndex, 1);
 
-    // End game if not enough players
+      if (removedIndex <= gameState.currentArtistIndex) {
+        gameState.currentArtistIndex -= 1;
+      }
+
+      if (gameState.currentArtistIndex >= gameState.artistQueue.length) {
+        gameState.currentArtistIndex = gameState.artistQueue.length - 1;
+      }
+    }
+
     if (room.players.size < 2) {
       this.endGame(roomId);
+      return;
     }
+
+    this.broadcastRoomUpdate(roomId);
+  }
+
+  handlePlayerDisconnect(roomId: string, playerId: string, socketId: string): void {
+    const room = rooms.get(roomId);
+    const gameState = this.games.get(roomId);
+    if (!room || !gameState) return;
+
+    const existing = gameState.disconnectedPlayers.get(playerId);
+    if (existing?.skipTimer) clearTimeout(existing.skipTimer);
+    if (existing?.removalTimer) clearTimeout(existing.removalTimer);
+
+    const graceState: DisconnectGraceState = {
+      socketId,
+      skipTimer: null,
+      removalTimer: null,
+    };
+
+    if (room.drawingState.currentArtist === playerId) {
+      graceState.skipTimer = setTimeout(() => {
+        const latestRoom = rooms.get(roomId);
+        const latestGame = this.games.get(roomId);
+        if (!latestRoom || !latestGame) return;
+
+        const tracked = latestGame.disconnectedPlayers.get(playerId);
+        if (!tracked || tracked.socketId !== socketId) return;
+
+        if (latestRoom.drawingState.currentArtist !== playerId) return;
+
+        if (latestRoom.phase === "word-selection") {
+          this.clearTimer(roomId);
+          this.advanceToNextTurn(roomId);
+        } else if (latestRoom.phase === "drawing") {
+          this.endRound(roomId);
+        }
+      }, 10_000);
+    }
+
+    graceState.removalTimer = setTimeout(() => {
+      this.removeDisconnectedPlayer(roomId, playerId, socketId);
+    }, 60_000);
+
+    gameState.disconnectedPlayers.set(playerId, graceState);
+  }
+
+  handlePlayerReconnect(roomId: string, playerId: string): void {
+    const gameState = this.games.get(roomId);
+    if (!gameState) return;
+
+    const graceState = gameState.disconnectedPlayers.get(playerId);
+    if (!graceState) return;
+
+    if (graceState.skipTimer) clearTimeout(graceState.skipTimer);
+    if (graceState.removalTimer) clearTimeout(graceState.removalTimer);
+
+    gameState.disconnectedPlayers.delete(playerId);
+  }
+
+  syncPrivateStateToPlayer(roomId: string, playerId: string, socketId: string): void {
+    const room = rooms.get(roomId);
+    const gameState = this.games.get(roomId);
+    if (!room || !gameState) return;
+
+    if (room.phase === "word-selection" && room.drawingState.currentArtist === playerId) {
+      this.io?.to(socketId).emit("word:choice", { words: gameState.wordChoices });
+      return;
+    }
+
+    if (!gameState.currentWord) return;
+
+    if (room.drawingState.currentArtist === playerId) {
+      this.io?.to(socketId).emit("word:selected", { word: gameState.currentWord });
+      return;
+    }
+
+    this.io?.to(socketId).emit("word:mask", { maskedWord: this.maskWord(gameState.currentWord) });
+  }
+
+  private removeDisconnectedPlayer(roomId: string, playerId: string, socketId: string): void {
+    const room = rooms.get(roomId);
+    const gameState = this.games.get(roomId);
+    if (!room || !gameState) return;
+
+    const trackedGrace = gameState.disconnectedPlayers.get(playerId);
+    if (!trackedGrace || trackedGrace.socketId !== socketId) return;
+
+    const player = room.players.get(socketId);
+    if (!player || player.playerId !== playerId) {
+      gameState.disconnectedPlayers.delete(playerId);
+      return;
+    }
+
+    room.players.delete(socketId);
+
+    if (room.creator === socketId) {
+      const newCreator = room.players.keys().next().value;
+      if (newCreator) {
+        room.creator = newCreator;
+      }
+    }
+
+    gameState.disconnectedPlayers.delete(playerId);
+
+    this.handlePlayerLeave(roomId, playerId);
+
+    if (room.players.size === 0) {
+      deleteRoom(roomId);
+      return;
+    }
+
+    this.io?.to(roomId).emit("user:left", socketId);
   }
 }
 

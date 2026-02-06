@@ -30,6 +30,7 @@ const io = new Server(httpServer, {
 gameManager.setIO(io);
 io.on("connection", (socket) => {
     console.log(`User ${socket.id} connected`);
+    const processDisconnect = handleDisconnect({ io, socket });
     // User Events
     socket.on("user:username", setUsername({ io, socket }));
     // Room Events
@@ -46,12 +47,14 @@ io.on("connection", (socket) => {
     socket.on("stroke:end", handleStrokeEnd({ io, socket }));
     socket.on("canvas:clear", handleCanvasClear({ io, socket }));
     socket.on("canvas:undo", handleCanvasUndo({ io, socket }));
+    socket.on("disconnecting", () => {
+        processDisconnect();
+    });
     socket.on("disconnect", (reason) => {
         console.log(reason);
         if (socket.recovered) {
             console.log(`User ${socket.id} successfully recovered`);
         }
-        handleDisconnect({ io, socket })();
     });
 });
 export { app, httpServer, io };

@@ -5,6 +5,7 @@ import type {
   Stroke,
   GamePhase,
   ConvertedRoom,
+  FinalStanding,
 } from "./main.types.js";
 import type { Server, Socket } from "socket.io";
 
@@ -97,7 +98,9 @@ export interface ServerToClientEvents {
   "user:reconnected": (userId: string) => void;
   "user:disconnected": (userId: string) => void;
   "word:choice": (data: { words: string[] }) => void;
-  "stroke:start": (data: { playerId: string; color: string; width: string }) => void;
+  "word:mask": (data: { maskedWord: string }) => void;
+  "word:selected": (data: { word: string }) => void;
+  "stroke:start": (data: { playerId: string; color: string; width: number }) => void;
   "stroke:points": (data: { playerId: string; points: Point[] }) => void;
   "stroke:end": () => void;
   "canvas:clear": () => void;
@@ -105,6 +108,6 @@ export interface ServerToClientEvents {
   "timer:sync": (data: { remaining: number; phase: GamePhase }) => void;
   "round:start": (data: { round: number; artistId: string }) => void;
   "round:end": (data: { word: string; scores: Record<string, number> }) => void;
-  "game:end": (data: { finalScores: Record<string, number> }) => void;
+  "game:end": (data: { finalStandings: FinalStanding[] }) => void;
   "guess:correct": (data: { playerId: string; username: string }) => void;
 }

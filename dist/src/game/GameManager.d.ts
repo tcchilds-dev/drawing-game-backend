@@ -24,9 +24,19 @@ declare class GameManager {
     private calculatePoints;
     private pickRandomWords;
     private shuffleArray;
+    private maskWord;
+    private buildArtistQueue;
+    private getUserByPlayerId;
+    private getSocketIdByPlayerId;
+    private isPlayerConnected;
+    private clearDisconnectTimers;
     clearGame(roomId: string): void;
     clearAllGames(): void;
     handlePlayerLeave(roomId: string, playerId: string): void;
+    handlePlayerDisconnect(roomId: string, playerId: string, socketId: string): void;
+    handlePlayerReconnect(roomId: string, playerId: string): void;
+    syncPrivateStateToPlayer(roomId: string, playerId: string, socketId: string): void;
+    private removeDisconnectedPlayer;
 }
 export declare const gameManager: GameManager;
 export {};

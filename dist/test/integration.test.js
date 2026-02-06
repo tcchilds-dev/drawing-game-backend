@@ -179,7 +179,7 @@ describe("Socket.IO server", () => {
                 expect(room.config.maxPlayers).toBe(6);
                 expect(room.config.wordSelectionSize).toBe(3);
                 expect(room.config.wordChoiceTimer).toBe(10_000);
-                expect(room.config.drawTimer).toBe(60_000);
+                expect(room.config.drawTimer).toBe(80_000);
                 expect(room.config.numberOfRounds).toBe(5);
                 expect(room.phase).toBe("lobby");
                 expect(room.players[serverSocketBob.id]).toBeDefined();
@@ -214,7 +214,7 @@ describe("Socket.IO server", () => {
                 expect(room.config.maxPlayers).toBe(10);
                 expect(room.config.wordSelectionSize).toBe(5);
                 expect(room.config.wordChoiceTimer).toBe(10_000);
-                expect(room.config.drawTimer).toBe(60_000);
+                expect(room.config.drawTimer).toBe(80_000);
                 expect(room.config.numberOfRounds).toBe(5);
                 expect(room.players[serverSocketBob.id]).toBeDefined();
                 expect(serverSocketBob.rooms.size).toBe(2);
@@ -404,7 +404,7 @@ describe("Socket.IO server", () => {
                     const handleWordChoice = (data) => {
                         const serverRoom = rooms.get(roomId);
                         const artistId = serverRoom?.drawingState.currentArtist;
-                        const artistClient = artistId === serverSocketBob.id ? clientSocketBob : clientSocketSally;
+                        const artistClient = artistId === bobPlayerId ? clientSocketBob : clientSocketSally;
                         artistClient.emit("word:choice", data.words[0], (response) => {
                             expect(response.success).toBe(true);
                             setTimeout(() => {
@@ -440,7 +440,7 @@ describe("Socket.IO server", () => {
                         const serverRoom = rooms.get(roomId);
                         const artistId = serverRoom?.drawingState.currentArtist;
                         // Non-artist tries to select a word
-                        const nonArtistClient = artistId === serverSocketBob.id ? clientSocketSally : clientSocketBob;
+                        const nonArtistClient = artistId === bobPlayerId ? clientSocketSally : clientSocketBob;
                         nonArtistClient.emit("word:choice", data.words[0], (_response) => {
                             // The callback may not be called if validation fails silently
                         });
@@ -480,14 +480,14 @@ describe("Socket.IO server", () => {
                     const handleWordChoice = (data) => {
                         const serverRoom = rooms.get(roomId);
                         const artistId = serverRoom?.drawingState.currentArtist;
-                        const artistClient = artistId === serverSocketBob.id ? clientSocketBob : clientSocketSally;
-                        const nonArtistClient = artistId === serverSocketBob.id ? clientSocketSally : clientSocketBob;
+                        const artistClient = artistId === bobPlayerId ? clientSocketBob : clientSocketSally;
+                        const nonArtistClient = artistId === bobPlayerId ? clientSocketSally : clientSocketBob;
                         // Artist selects word
                         artistClient.emit("word:choice", data.words[0], () => {
                             setTimeout(() => {
                                 // Non-artist makes an incorrect guess
                                 const guessage = {
-                                    playerId: artistId === serverSocketBob.id ? serverSocketSally.id : serverSocketBob.id,
+                                    playerId: artistId === bobPlayerId ? sallyPlayerId : bobPlayerId,
                                     guessage: "definitely-wrong-guess-xyz",
                                     timestamp: new Date().toISOString(),
                                 };
@@ -537,9 +537,9 @@ describe("Socket.IO server", () => {
                     const handleWordChoice = (data) => {
                         const serverRoom = rooms.get(roomId);
                         const artistId = serverRoom?.drawingState.currentArtist;
-                        const artistClient = artistId === serverSocketBob.id ? clientSocketBob : clientSocketSally;
-                        const nonArtistClient = artistId === serverSocketBob.id ? clientSocketSally : clientSocketBob;
-                        const nonArtistId = artistId === serverSocketBob.id ? serverSocketSally.id : serverSocketBob.id;
+                        const artistClient = artistId === bobPlayerId ? clientSocketBob : clientSocketSally;
+                        const nonArtistClient = artistId === bobPlayerId ? clientSocketSally : clientSocketBob;
+                        const nonArtistId = artistId === bobPlayerId ? sallyPlayerId : bobPlayerId;
                         const chosenWord = data.words[0];
                         // Artist selects word
                         artistClient.emit("word:choice", chosenWord, () => {
@@ -585,7 +585,7 @@ describe("Socket.IO server", () => {
                     const handleWordChoice = (data) => {
                         const serverRoom = rooms.get(roomId);
                         const artistId = serverRoom?.drawingState.currentArtist;
-                        const artistClient = artistId === serverSocketBob.id ? clientSocketBob : clientSocketSally;
+                        const artistClient = artistId === bobPlayerId ? clientSocketBob : clientSocketSally;
                         const chosenWord = data.words[0];
                         // Artist selects word
                         artistClient.emit("word:choice", chosenWord, () => {

@@ -6,7 +6,18 @@ import { convertRoom, rooms } from "../room/rooms.js";
 
 export function handleGuessage({ io, socket }: EventDependencies) {
   return async (payload: Guessage) => {
-    const result = validateGuessage(payload);
+    const playerId = socket.data.playerId;
+    if (!playerId) {
+      console.log("playerId not set");
+      return;
+    }
+
+    const sanitizedPayload: Guessage = {
+      ...payload,
+      playerId,
+    };
+
+    const result = validateGuessage(sanitizedPayload);
     if (result.success === false) {
       console.log("guessage validation failed", result.errors);
       return;
@@ -21,10 +32,10 @@ export function handleGuessage({ io, socket }: EventDependencies) {
     const room = rooms.get(roomId);
     if (!room) return;
 
-    const isCorrect = gameManager.checkGuess(roomId, socket.id, payload.guessage);
+    const isCorrect = gameManager.checkGuess(roomId, playerId, payload.guessage);
 
     if (!isCorrect) {
-      room.guessages.push(payload);
+      room.guessages.push(sanitizedPayload);
       io.to(roomId).emit("room:update", convertRoom(room));
     }
     // If correct, gameManager.checkGuess already emits "guess:correct"

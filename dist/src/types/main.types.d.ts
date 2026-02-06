@@ -23,6 +23,11 @@ export type User = {
     username: string;
     score: number;
 };
+export type FinalStanding = {
+    playerId: string;
+    username: string;
+    score: number;
+};
 export type GamePhase = "lobby" | "word-selection" | "drawing" | "round-end";
 export interface Room {
     id: string;

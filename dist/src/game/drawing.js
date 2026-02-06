@@ -13,8 +13,11 @@ export function handleStrokeStart({ io: _io, socket }) {
         const room = rooms.get(roomId);
         if (!room)
             return;
+        const playerId = socket.data.playerId;
+        if (!playerId)
+            return;
         // Only the current artist can draw
-        if (room.drawingState.currentArtist !== socket.id)
+        if (room.drawingState.currentArtist !== playerId)
             return;
         if (room.phase !== "drawing")
             return;
@@ -26,7 +29,7 @@ export function handleStrokeStart({ io: _io, socket }) {
         };
         // Broadcast to other players (exclude sender)
         socket.to(roomId).emit("stroke:start", {
-            playerId: socket.id,
+            playerId,
             color: payload.color,
             width: payload.width,
         });
@@ -45,7 +48,10 @@ export function handleStrokePoints({ io: _io, socket }) {
         const room = rooms.get(roomId);
         if (!room)
             return;
-        if (room.drawingState.currentArtist !== socket.id)
+        const playerId = socket.data.playerId;
+        if (!playerId)
+            return;
+        if (room.drawingState.currentArtist !== playerId)
             return;
         if (room.phase !== "drawing")
             return;
@@ -55,7 +61,7 @@ export function handleStrokePoints({ io: _io, socket }) {
         room.drawingState.activeStroke.points.push(...payload.points);
         // Broadcast to other players
         socket.to(roomId).emit("stroke:points", {
-            playerId: socket.id,
+            playerId,
             points: payload.points,
         });
     };
@@ -68,7 +74,10 @@ export function handleStrokeEnd({ io: _io, socket }) {
         const room = rooms.get(roomId);
         if (!room)
             return;
-        if (room.drawingState.currentArtist !== socket.id)
+        const playerId = socket.data.playerId;
+        if (!playerId)
+            return;
+        if (room.drawingState.currentArtist !== playerId)
             return;
         if (room.phase !== "drawing")
             return;
@@ -89,7 +98,10 @@ export function handleCanvasClear({ io, socket }) {
         const room = rooms.get(roomId);
         if (!room)
             return;
-        if (room.drawingState.currentArtist !== socket.id)
+        const playerId = socket.data.playerId;
+        if (!playerId)
+            return;
+        if (room.drawingState.currentArtist !== playerId)
             return;
         if (room.phase !== "drawing")
             return;
@@ -108,7 +120,10 @@ export function handleCanvasUndo({ io, socket }) {
         const room = rooms.get(roomId);
         if (!room)
             return;
-        if (room.drawingState.currentArtist !== socket.id)
+        const playerId = socket.data.playerId;
+        if (!playerId)
+            return;
+        if (room.drawingState.currentArtist !== playerId)
             return;
         if (room.phase !== "drawing")
             return;

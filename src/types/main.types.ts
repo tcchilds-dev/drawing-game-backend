@@ -29,6 +29,12 @@ export type User = {
   score: number;
 };
 
+export type FinalStanding = {
+  playerId: string;
+  username: string;
+  score: number;
+};
+
 export type GamePhase = "lobby" | "word-selection" | "drawing" | "round-end";
 
 export interface Room {
@@ -64,7 +70,7 @@ export type Stroke = {
 };
 
 export type DrawingState = {
-  currentArtist: string | null;
+  currentArtist: string | null; // current artist playerId
   correctlyGuessed: User[];
   startedAt: number | null;
   completedStrokes: Stroke[];
@@ -76,6 +82,6 @@ export const DEFAULT_ROOM_CONFIG: RoomConfig = {
   maxPlayers: 6,
   wordSelectionSize: 3,
   wordChoiceTimer: 10 * 1000,
-  drawTimer: 60 * 1000,
+  drawTimer: 80 * 1000,
   numberOfRounds: 5,
 };

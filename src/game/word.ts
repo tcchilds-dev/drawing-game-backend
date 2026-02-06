@@ -17,9 +17,16 @@ export function chooseWord({ io: _io, socket }: EventDependencies) {
       return;
     }
 
-    const word = gameManager.selectWord(roomId, socket.id, payload);
+    const playerId = socket.data.playerId;
+    if (!playerId) {
+      callback({ success: false, error: "playerId not set" });
+      return;
+    }
+
+    const word = gameManager.selectWord(roomId, playerId, payload);
     if (!word) {
       console.log("word selection failed");
+      callback({ success: false, error: "word selection failed" });
       return;
     }
     callback({ success: true, word: word });

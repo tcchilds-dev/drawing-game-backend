@@ -1,4 +1,4 @@
-import type { RoomConfig, Guessage, Point, Stroke, GamePhase, ConvertedRoom } from "./main.types.js";
+import type { RoomConfig, Guessage, Point, Stroke, GamePhase, ConvertedRoom, FinalStanding } from "./main.types.js";
 import type { Server, Socket } from "socket.io";
 export type EventDependencies = {
     io: Server;
@@ -72,10 +72,16 @@ export interface ServerToClientEvents {
     "word:choice": (data: {
         words: string[];
     }) => void;
+    "word:mask": (data: {
+        maskedWord: string;
+    }) => void;
+    "word:selected": (data: {
+        word: string;
+    }) => void;
     "stroke:start": (data: {
         playerId: string;
         color: string;
-        width: string;
+        width: number;
     }) => void;
     "stroke:points": (data: {
         playerId: string;
@@ -100,7 +106,7 @@ export interface ServerToClientEvents {
         scores: Record<string, number>;
     }) => void;
     "game:end": (data: {
-        finalScores: Record<string, number>;
+        finalStandings: FinalStanding[];
     }) => void;
     "guess:correct": (data: {
         playerId: string;

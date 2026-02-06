@@ -13,12 +13,17 @@ export function leaveRoom({ io, socket }) {
             console.log("could not fetch room for leave");
             return;
         }
+        const leavingUser = room.players.get(socket.id);
+        if (!leavingUser) {
+            console.log("could not fetch user for leave");
+            return;
+        }
         const result = room.players.delete(socket.id);
         if (result !== true) {
             console.log("could not remove player from room");
             return;
         }
-        gameManager.handlePlayerLeave(roomId, socket.id);
+        gameManager.handlePlayerLeave(roomId, leavingUser.playerId);
         // If room is now empty, delete it
         if (room.players.size === 0) {
             console.log(`Room ${roomId} is empty, deleting`);

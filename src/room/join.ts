@@ -3,6 +3,8 @@ import { validateRoomId } from "../validation/typia.js";
 import { convertRoom, rooms } from "./rooms.js";
 import type { User } from "../types/main.types.js";
 import { syncCanvasToSocket } from "../game/drawing.js";
+import { gameManager } from "../game/GameManager.js";
+import { clearLobbyDisconnectGrace } from "./disconnect.js";
 
 export function joinRoom({ io, socket }: EventDependencies) {
   return async (payload: string, callback: RoomCallback) => {
@@ -29,18 +31,29 @@ export function joinRoom({ io, socket }: EventDependencies) {
       return;
     }
 
-    // Check if this playerId is already in the room with a different socket.id
+    // Check if this playerId is already in the room with a different socket.id.
     let existingScore = 0;
+    let existingSocketId: string | null = null;
     for (const [socketId, player] of room.players) {
       if (player.playerId === playerId && socketId !== socket.id) {
-        console.log(`Player ${playerId} rejoining, removing old socket ${socketId}`);
+        existingSocketId = socketId;
         existingScore = player.score;
-        room.players.delete(socketId);
-
-        if (room.creator === socketId) {
-          room.creator = socket.id;
-        }
         break;
+      }
+    }
+
+    const isRejoin = existingSocketId !== null;
+    if (!isRejoin && room.players.size >= room.config.maxPlayers) {
+      callback({ success: false, error: "room is full" });
+      return;
+    }
+
+    if (existingSocketId) {
+      console.log(`Player ${playerId} rejoining, removing old socket ${existingSocketId}`);
+      room.players.delete(existingSocketId);
+
+      if (room.creator === existingSocketId) {
+        room.creator = socket.id;
       }
     }
 
@@ -54,6 +67,8 @@ export function joinRoom({ io, socket }: EventDependencies) {
     };
 
     room.players.set(socket.id, user);
+    gameManager.handlePlayerReconnect(payload, playerId);
+    clearLobbyDisconnectGrace(payload, playerId);
 
     const convertedRoom = convertRoom(room);
 
@@ -62,6 +77,7 @@ export function joinRoom({ io, socket }: EventDependencies) {
     // Sync canvas state if game is in progress
     if (room.phase === "drawing" || room.phase === "word-selection") {
       syncCanvasToSocket(socket, payload);
+      gameManager.syncPrivateStateToPlayer(payload, playerId, socket.id);
     }
 
     callback({ success: true, room: convertedRoom });
