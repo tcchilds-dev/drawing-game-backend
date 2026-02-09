@@ -65,10 +65,7 @@ export interface ClientToServerEvents {
 }
 export interface ServerToClientEvents {
     "room:update": (room: ConvertedRoom) => void;
-    "user:joined": (userId: string) => void;
     "user:left": (userId: string) => void;
-    "user:reconnected": (userId: string) => void;
-    "user:disconnected": (userId: string) => void;
     "word:choice": (data: {
         words: string[];
     }) => void;

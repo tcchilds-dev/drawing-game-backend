@@ -39,7 +39,7 @@ export type GamePhase = "lobby" | "word-selection" | "drawing" | "round-end";
 
 export interface Room {
   id: string;
-  creator: string; // socket.id of creator
+  creator: string;
   config: RoomConfig;
   players: Map<string, User>;
   guessages: Guessage[];

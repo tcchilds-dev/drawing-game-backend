@@ -24,13 +24,11 @@ export function leaveRoom({ io, socket }) {
             return;
         }
         gameManager.handlePlayerLeave(roomId, leavingUser.playerId);
-        // If room is now empty, delete it
         if (room.players.size === 0) {
             console.log(`Room ${roomId} is empty, deleting`);
             deleteRoom(roomId);
             return;
         }
-        // If creator left, assign new creator
         if (room.creator === socket.id) {
             const newCreator = room.players.keys().next().value;
             if (newCreator) {

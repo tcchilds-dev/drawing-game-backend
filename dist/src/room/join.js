@@ -24,7 +24,7 @@ export function joinRoom({ io, socket }) {
             callback({ success: false, error: "playerId not set" });
             return;
         }
-        // Check if this playerId is already in the room with a different socket.id.
+        // Check if this playerId is already in the room with a different socket.id
         let existingScore = 0;
         let existingSocketId = null;
         for (const [socketId, player] of room.players) {

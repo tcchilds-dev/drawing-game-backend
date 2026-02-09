@@ -42,7 +42,6 @@ export function handleDisconnect({ io, socket }: EventDependencies) {
 
     console.log(`Socket ${socket.id} disconnected in room ${roomId}, starting grace period`);
 
-    // During active game phases, GameManager owns the grace logic
     if (room.phase !== "lobby") {
       gameManager.handlePlayerDisconnect(roomId, playerId, socket.id);
       return;

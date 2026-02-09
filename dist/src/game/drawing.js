@@ -16,18 +16,15 @@ export function handleStrokeStart({ io: _io, socket }) {
         const playerId = socket.data.playerId;
         if (!playerId)
             return;
-        // Only the current artist can draw
         if (room.drawingState.currentArtist !== playerId)
             return;
         if (room.phase !== "drawing")
             return;
-        // Start a new active stroke
         room.drawingState.activeStroke = {
             points: [],
             color: payload.color,
             width: payload.width,
         };
-        // Broadcast to other players (exclude sender)
         socket.to(roomId).emit("stroke:start", {
             playerId,
             color: payload.color,
@@ -57,9 +54,7 @@ export function handleStrokePoints({ io: _io, socket }) {
             return;
         if (!room.drawingState.activeStroke)
             return;
-        // Add points to active stroke
         room.drawingState.activeStroke.points.push(...payload.points);
-        // Broadcast to other players
         socket.to(roomId).emit("stroke:points", {
             playerId,
             points: payload.points,
@@ -81,12 +76,10 @@ export function handleStrokeEnd({ io: _io, socket }) {
             return;
         if (room.phase !== "drawing")
             return;
-        // Move active stroke to completed strokes
         if (room.drawingState.activeStroke) {
             room.drawingState.completedStrokes.push(room.drawingState.activeStroke);
             room.drawingState.activeStroke = null;
         }
-        // Broadcast to other players
         socket.to(roomId).emit("stroke:end");
     };
 }
@@ -105,10 +98,8 @@ export function handleCanvasClear({ io, socket }) {
             return;
         if (room.phase !== "drawing")
             return;
-        // Clear all strokes
         room.drawingState.completedStrokes = [];
         room.drawingState.activeStroke = null;
-        // Broadcast to all players in the room
         io.to(roomId).emit("canvas:clear");
     };
 }
@@ -127,10 +118,8 @@ export function handleCanvasUndo({ io, socket }) {
             return;
         if (room.phase !== "drawing")
             return;
-        // Remove last completed stroke
         if (room.drawingState.completedStrokes.length > 0) {
             room.drawingState.completedStrokes.pop();
-            // Send full canvas sync to all players
             io.to(roomId).emit("canvas:sync", {
                 completedStrokes: room.drawingState.completedStrokes,
                 activeStroke: room.drawingState.activeStroke,
@@ -138,7 +127,6 @@ export function handleCanvasUndo({ io, socket }) {
         }
     };
 }
-// Send canvas state to a specific socket (for late joiners)
 export function syncCanvasToSocket(socket, roomId) {
     const room = rooms.get(roomId);
     if (!room)
