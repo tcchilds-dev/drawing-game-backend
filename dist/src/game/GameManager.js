@@ -154,6 +154,8 @@ class GameManager {
         const gameState = this.games.get(roomId);
         if (!room || !gameState)
             return;
+        if (room.phase !== "drawing")
+            return;
         this.clearTimer(roomId);
         room.phase = "round-end";
         const scores = {};

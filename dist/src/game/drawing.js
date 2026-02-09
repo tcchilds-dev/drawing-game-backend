@@ -1,3 +1,4 @@
+import { getActiveRoomId } from "../room/activeRoom.js";
 import { rooms } from "../room/rooms.js";
 import { validateStrokeStart, validateStrokePoints } from "../validation/typia.js";
 export function handleStrokeStart({ io: _io, socket }) {
@@ -7,7 +8,7 @@ export function handleStrokeStart({ io: _io, socket }) {
             console.log("stroke:start validation failed", result.errors);
             return;
         }
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId)
             return;
         const room = rooms.get(roomId);
@@ -39,7 +40,7 @@ export function handleStrokePoints({ io: _io, socket }) {
             console.log("stroke:points validation failed", result.errors);
             return;
         }
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId)
             return;
         const room = rooms.get(roomId);
@@ -63,7 +64,7 @@ export function handleStrokePoints({ io: _io, socket }) {
 }
 export function handleStrokeEnd({ io: _io, socket }) {
     return () => {
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId)
             return;
         const room = rooms.get(roomId);
@@ -85,7 +86,7 @@ export function handleStrokeEnd({ io: _io, socket }) {
 }
 export function handleCanvasClear({ io, socket }) {
     return () => {
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId)
             return;
         const room = rooms.get(roomId);
@@ -105,7 +106,7 @@ export function handleCanvasClear({ io, socket }) {
 }
 export function handleCanvasUndo({ io, socket }) {
     return () => {
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId)
             return;
         const room = rooms.get(roomId);

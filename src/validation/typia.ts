@@ -34,5 +34,7 @@ export const validateStrokeStart: (
   width: number;
 }>();
 
-export const validateStrokePoints: (input: unknown) => typia.IValidation<{ points: Point[] }> =
-  typia.createValidate<{ points: Point[] }>();
+export const validateStrokePoints: (
+  input: unknown
+) => typia.IValidation<{ points: Point[] & tags.MinItems<1> & tags.MaxItems<150> }> =
+  typia.createValidate<{ points: Point[] & tags.MinItems<1> & tags.MaxItems<150> }>();

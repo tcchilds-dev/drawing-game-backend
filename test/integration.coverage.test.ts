@@ -481,6 +481,60 @@ describe("Socket.IO server integration coverage", () => {
     expect(rooms.has(roomId)).toBe(false);
   });
 
+  it("should leave existing rooms before creating a new room", async () => {
+    await setupUser(clientSocketBob, "Bob", bobPlayerId);
+
+    const firstRoomResponse = await emitWithAck<RoomResponse>(clientSocketBob, "room:create", {});
+    expect(firstRoomResponse.success).toBe(true);
+    if (!firstRoomResponse.success) return;
+
+    const secondRoomResponse = await emitWithAck<RoomResponse>(clientSocketBob, "room:create", {});
+    expect(secondRoomResponse.success).toBe(true);
+    if (!secondRoomResponse.success) return;
+
+    const firstRoomId = firstRoomResponse.room.id;
+    const secondRoomId = secondRoomResponse.room.id;
+
+    expect(rooms.has(firstRoomId)).toBe(false);
+    expect(rooms.get(secondRoomId)?.players.has(clientSocketBob.id!)).toBe(true);
+    expect(getServerSocket(clientSocketBob).rooms.has(firstRoomId)).toBe(false);
+    expect(getServerSocket(clientSocketBob).rooms.has(secondRoomId)).toBe(true);
+  });
+
+  it("should leave existing rooms with cleanup before joining another room", async () => {
+    await setupUser(clientSocketBob, "Bob", bobPlayerId);
+    await setupUser(clientSocketSally, "Sally", sallyPlayerId);
+
+    const roomAResponse = await emitWithAck<RoomResponse>(clientSocketBob, "room:create", {});
+    expect(roomAResponse.success).toBe(true);
+    if (!roomAResponse.success) return;
+
+    const roomAId = roomAResponse.room.id;
+    const sallyJoinResponse = await emitWithAck<RoomResponse>(clientSocketSally, "room:join", roomAId);
+    expect(sallyJoinResponse.success).toBe(true);
+
+    const { client: charlieClient } = await createExtraClientWithUser("Charlie");
+    const roomBResponse = await emitWithAck<RoomResponse>(charlieClient, "room:create", {});
+    expect(roomBResponse.success).toBe(true);
+    if (!roomBResponse.success) return;
+
+    const roomBId = roomBResponse.room.id;
+    const bobJoinRoomBResponse = await emitWithAck<RoomResponse>(clientSocketBob, "room:join", roomBId);
+    expect(bobJoinRoomBResponse.success).toBe(true);
+
+    const roomA = rooms.get(roomAId);
+    expect(roomA?.players.has(clientSocketBob.id!)).toBe(false);
+    expect(roomA?.players.has(clientSocketSally.id!)).toBe(true);
+    expect(roomA?.creator).toBe(clientSocketSally.id);
+
+    const roomB = rooms.get(roomBId);
+    expect(roomB?.players.has(clientSocketBob.id!)).toBe(true);
+    expect(roomB?.players.has(charlieClient.id!)).toBe(true);
+
+    expect(getServerSocket(clientSocketBob).rooms.has(roomAId)).toBe(false);
+    expect(getServerSocket(clientSocketBob).rooms.has(roomBId)).toBe(true);
+  });
+
   it("should reject game:start for invalid and unknown room ids", async () => {
     await setupUser(clientSocketBob, "Bob", bobPlayerId);
 

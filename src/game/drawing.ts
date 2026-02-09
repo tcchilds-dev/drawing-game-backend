@@ -1,5 +1,6 @@
 import type { EventDependencies } from "../types/event.types.js";
 import type { Point } from "../types/main.types.js";
+import { getActiveRoomId } from "../room/activeRoom.js";
 import { rooms } from "../room/rooms.js";
 import { validateStrokeStart, validateStrokePoints } from "../validation/typia.js";
 
@@ -11,7 +12,7 @@ export function handleStrokeStart({ io: _io, socket }: EventDependencies) {
       return;
     }
 
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) return;
 
     const room = rooms.get(roomId);
@@ -45,7 +46,7 @@ export function handleStrokePoints({ io: _io, socket }: EventDependencies) {
       return;
     }
 
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) return;
 
     const room = rooms.get(roomId);
@@ -69,7 +70,7 @@ export function handleStrokePoints({ io: _io, socket }: EventDependencies) {
 
 export function handleStrokeEnd({ io: _io, socket }: EventDependencies) {
   return () => {
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) return;
 
     const room = rooms.get(roomId);
@@ -92,7 +93,7 @@ export function handleStrokeEnd({ io: _io, socket }: EventDependencies) {
 
 export function handleCanvasClear({ io, socket }: EventDependencies) {
   return () => {
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) return;
 
     const room = rooms.get(roomId);
@@ -113,7 +114,7 @@ export function handleCanvasClear({ io, socket }: EventDependencies) {
 
 export function handleCanvasUndo({ io, socket }: EventDependencies) {
   return () => {
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) return;
 
     const room = rooms.get(roomId);

@@ -3,6 +3,7 @@ import { convertRoom, rooms } from "./rooms.js";
 import { syncCanvasToSocket } from "../game/drawing.js";
 import { gameManager } from "../game/GameManager.js";
 import { clearLobbyDisconnectGrace } from "./disconnect.js";
+import { removeSocketFromAllRooms } from "./leave.js";
 export function joinRoom({ io, socket }) {
     return async (payload, callback) => {
         if (typeof callback !== "function")
@@ -24,6 +25,7 @@ export function joinRoom({ io, socket }) {
             callback({ success: false, error: "playerId not set" });
             return;
         }
+        removeSocketFromAllRooms({ io, socket, excludedRoomId: payload });
         // Check if this playerId is already in the room with a different socket.id
         let existingScore = 0;
         let existingSocketId = null;

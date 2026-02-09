@@ -179,13 +179,21 @@ export const validateRoomId = (() => { const __is = input => "string" === typeof
         data: input
     };
 }); })();
-export const validateGuessage = (() => { const _io0 = input => "string" === typeof input.playerId && "string" === typeof input.guessage && ("string" === typeof input.timestamp && __typia_transform__isFormatDateTime._isFormatDateTime(input.timestamp)); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.playerId || _report(_exceptionable, {
+export const validateGuessage = (() => { const _io0 = input => "string" === typeof input.playerId && ("string" === typeof input.guessage && (1 <= input.guessage.length && input.guessage.length <= 120)) && ("string" === typeof input.timestamp && __typia_transform__isFormatDateTime._isFormatDateTime(input.timestamp)); const _vo0 = (input, _path, _exceptionable = true) => ["string" === typeof input.playerId || _report(_exceptionable, {
         path: _path + ".playerId",
         expected: "string",
         value: input.playerId
-    }), "string" === typeof input.guessage || _report(_exceptionable, {
+    }), "string" === typeof input.guessage && (1 <= input.guessage.length || _report(_exceptionable, {
         path: _path + ".guessage",
-        expected: "string",
+        expected: "string & MinLength<1>",
+        value: input.guessage
+    })) && (input.guessage.length <= 120 || _report(_exceptionable, {
+        path: _path + ".guessage",
+        expected: "string & MaxLength<120>",
+        value: input.guessage
+    })) || _report(_exceptionable, {
+        path: _path + ".guessage",
+        expected: "(string & MinLength<1> & MaxLength<120>)",
         value: input.guessage
     }), "string" === typeof input.timestamp && (__typia_transform__isFormatDateTime._isFormatDateTime(input.timestamp) || _report(_exceptionable, {
         path: _path + ".timestamp",
@@ -283,9 +291,17 @@ export const validateStrokeStart = (() => { const _io0 = input => "string" === t
         data: input
     };
 }); })();
-export const validateStrokePoints = (() => { const _io0 = input => Array.isArray(input.points) && input.points.every(elem => Array.isArray(elem) && (elem.length === 2 && ("number" === typeof elem[0] && (0 <= elem[0] && elem[0] <= 1)) && ("number" === typeof elem[1] && (0 <= elem[1] && elem[1] <= 1)))); const _vo0 = (input, _path, _exceptionable = true) => [(Array.isArray(input.points) || _report(_exceptionable, {
+export const validateStrokePoints = (() => { const _io0 = input => Array.isArray(input.points) && (1 <= input.points.length && input.points.length <= 150 && input.points.every(elem => Array.isArray(elem) && (elem.length === 2 && ("number" === typeof elem[0] && (0 <= elem[0] && elem[0] <= 1)) && ("number" === typeof elem[1] && (0 <= elem[1] && elem[1] <= 1))))); const _vo0 = (input, _path, _exceptionable = true) => [(Array.isArray(input.points) || _report(_exceptionable, {
         path: _path + ".points",
-        expected: "Array<Point>",
+        expected: "(Array<Point> & MinItems<1> & MaxItems<150>)",
+        value: input.points
+    })) && ((1 <= input.points.length || _report(_exceptionable, {
+        path: _path + ".points",
+        expected: "Array<> & MinItems<1>",
+        value: input.points
+    })) && (input.points.length <= 150 || _report(_exceptionable, {
+        path: _path + ".points",
+        expected: "Array<> & MaxItems<150>",
         value: input.points
     })) && input.points.map((elem, _index2) => (Array.isArray(elem) || _report(_exceptionable, {
         path: _path + ".points[" + _index2 + "]",
@@ -326,9 +342,9 @@ export const validateStrokePoints = (() => { const _io0 = input => Array.isArray
         path: _path + ".points[" + _index2 + "]",
         expected: "Point",
         value: elem
-    })).every(flag => flag) || _report(_exceptionable, {
+    })).every(flag => flag)) || _report(_exceptionable, {
         path: _path + ".points",
-        expected: "Array<Point>",
+        expected: "(Array<Point> & MinItems<1> & MaxItems<150>)",
         value: input.points
     })].every(flag => flag); const __is = input => "object" === typeof input && null !== input && _io0(input); let errors; let _report; return __typia_transform__createStandardSchema._createStandardSchema(input => {
     if (false === __is(input)) {

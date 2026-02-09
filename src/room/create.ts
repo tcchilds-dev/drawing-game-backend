@@ -9,8 +9,9 @@ import {
 } from "../types/main.types.js";
 import { validateRoomConfig } from "../validation/typia.js";
 import { convertRoom, rooms } from "./rooms.js";
+import { removeSocketFromAllRooms } from "./leave.js";
 
-export function createRoom({ io: _io, socket }: EventDependencies) {
+export function createRoom({ io, socket }: EventDependencies) {
   return async (payload: Partial<RoomConfig>, callback: RoomCallback) => {
     if (typeof callback !== "function") {
       console.log("callback was not a function");
@@ -29,12 +30,12 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
       return;
     }
 
+    removeSocketFromAllRooms({ io, socket });
+
     const roomConfig: RoomConfig = {
       ...DEFAULT_ROOM_CONFIG,
       ...payload,
     };
-
-    console.log(roomConfig);
 
     const user: User = {
       id: socket.id,
@@ -42,8 +43,6 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
       username: socket.data.username || "Guest",
       score: 0,
     };
-
-    console.log(user);
 
     const startingDrawState: DrawingState = {
       currentArtist: null,
@@ -66,12 +65,7 @@ export function createRoom({ io: _io, socket }: EventDependencies) {
 
     room.players.set(socket.id, user);
 
-    console.log(room);
-    console.log(room.id);
-
     rooms.set(room.id, room);
-
-    console.log(rooms);
 
     socket.join(room.id);
 

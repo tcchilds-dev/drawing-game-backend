@@ -1,9 +1,12 @@
 import type { EventDependencies, WordCallback } from "../types/event.types.js";
 import { validateWord } from "../validation/typia.js";
 import { gameManager } from "../game/GameManager.js";
+import { getActiveRoomId } from "../room/activeRoom.js";
 
 export function chooseWord({ io: _io, socket }: EventDependencies) {
   return async (payload: string, callback: WordCallback) => {
+    if (typeof callback !== "function") return;
+
     const result = validateWord(payload);
     if (result.success === false) {
       console.log(result.errors);
@@ -11,7 +14,7 @@ export function chooseWord({ io: _io, socket }: EventDependencies) {
       return;
     }
 
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) {
       callback({ success: false, error: "player is not in the room" });
       return;

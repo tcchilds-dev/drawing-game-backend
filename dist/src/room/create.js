@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { DEFAULT_ROOM_CONFIG, } from "../types/main.types.js";
 import { validateRoomConfig } from "../validation/typia.js";
 import { convertRoom, rooms } from "./rooms.js";
-export function createRoom({ io: _io, socket }) {
+import { removeSocketFromAllRooms } from "./leave.js";
+export function createRoom({ io, socket }) {
     return async (payload, callback) => {
         if (typeof callback !== "function") {
             console.log("callback was not a function");
@@ -18,18 +19,17 @@ export function createRoom({ io: _io, socket }) {
             callback({ success: false, error: "playerId not set" });
             return;
         }
+        removeSocketFromAllRooms({ io, socket });
         const roomConfig = {
             ...DEFAULT_ROOM_CONFIG,
             ...payload,
         };
-        console.log(roomConfig);
         const user = {
             id: socket.id,
             playerId: socket.data.playerId,
             username: socket.data.username || "Guest",
             score: 0,
         };
-        console.log(user);
         const startingDrawState = {
             currentArtist: null,
             correctlyGuessed: [],
@@ -48,10 +48,7 @@ export function createRoom({ io: _io, socket }) {
             currentRound: 0,
         };
         room.players.set(socket.id, user);
-        console.log(room);
-        console.log(room.id);
         rooms.set(room.id, room);
-        console.log(rooms);
         socket.join(room.id);
         const convertedRoom = convertRoom(room);
         callback({ success: true, room: convertedRoom });

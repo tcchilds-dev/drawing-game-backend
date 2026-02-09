@@ -14,6 +14,6 @@ export declare const validateStrokeStart: (input: unknown) => typia.IValidation<
     width: number;
 }>;
 export declare const validateStrokePoints: (input: unknown) => typia.IValidation<{
-    points: Point[];
+    points: Point[] & tags.MinItems<1> & tags.MaxItems<150>;
 }>;
 //# sourceMappingURL=typia.d.ts.map

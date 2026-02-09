@@ -1,5 +1,6 @@
 import { validateGuessage } from "../validation/typia.js";
 import { gameManager } from "../game/GameManager.js";
+import { getActiveRoomId } from "../room/activeRoom.js";
 import { convertRoom, rooms } from "../room/rooms.js";
 export function handleGuessage({ io, socket }) {
     return async (payload) => {
@@ -17,7 +18,7 @@ export function handleGuessage({ io, socket }) {
             console.log("guessage validation failed", result.errors);
             return;
         }
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId) {
             console.log("player not in a room");
             return;

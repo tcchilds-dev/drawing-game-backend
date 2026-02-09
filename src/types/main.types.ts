@@ -12,7 +12,7 @@ export interface RoomConfig {
 // Guess + Message
 export type Guessage = {
   playerId: string;
-  guessage: string;
+  guessage: string & tags.MinLength<1> & tags.MaxLength<120>;
   timestamp: string & tags.Format<"date-time">;
 };
 

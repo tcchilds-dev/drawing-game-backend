@@ -1,14 +1,17 @@
 import { validateWord } from "../validation/typia.js";
 import { gameManager } from "../game/GameManager.js";
+import { getActiveRoomId } from "../room/activeRoom.js";
 export function chooseWord({ io: _io, socket }) {
     return async (payload, callback) => {
+        if (typeof callback !== "function")
+            return;
         const result = validateWord(payload);
         if (result.success === false) {
             console.log(result.errors);
             callback({ success: false, error: "word validation failed" });
             return;
         }
-        const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+        const roomId = getActiveRoomId(socket);
         if (!roomId) {
             callback({ success: false, error: "player is not in the room" });
             return;

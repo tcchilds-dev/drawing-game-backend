@@ -2,6 +2,7 @@ import { gameManager } from "../game/GameManager.js";
 import type { EventDependencies } from "../types/event.types.js";
 import { convertRoom, rooms } from "./rooms.js";
 import { deleteRoom } from "./rooms.js";
+import { getActiveRoomId } from "./activeRoom.js";
 
 const lobbyDisconnectTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -20,7 +21,7 @@ export function clearLobbyDisconnectGrace(roomId: string, playerId: string): voi
 
 export function handleDisconnect({ io, socket }: EventDependencies) {
   return () => {
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) {
       return;
     }

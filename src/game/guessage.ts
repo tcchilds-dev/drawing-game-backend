@@ -2,6 +2,7 @@ import type { EventDependencies } from "../types/event.types.js";
 import type { Guessage } from "../types/main.types.js";
 import { validateGuessage } from "../validation/typia.js";
 import { gameManager } from "../game/GameManager.js";
+import { getActiveRoomId } from "../room/activeRoom.js";
 import { convertRoom, rooms } from "../room/rooms.js";
 
 export function handleGuessage({ io, socket }: EventDependencies) {
@@ -23,7 +24,7 @@ export function handleGuessage({ io, socket }: EventDependencies) {
       return;
     }
 
-    const roomId = Array.from(socket.rooms).find((id) => id !== socket.id);
+    const roomId = getActiveRoomId(socket);
     if (!roomId) {
       console.log("player not in a room");
       return;
