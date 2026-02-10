@@ -22,12 +22,16 @@ import {
 
 const DEFAULT_CLIENT_ORIGIN = "http://localhost:5173";
 
+function normalizeOrigin(origin: string): string {
+  return origin.trim().replace(/\/+$/, "");
+}
+
 function getAllowedOrigins(rawOrigins: string | undefined): string[] {
   if (!rawOrigins) return [DEFAULT_CLIENT_ORIGIN];
 
   const parsed = rawOrigins
     .split(",")
-    .map((origin) => origin.trim())
+    .map((origin) => normalizeOrigin(origin))
     .filter(Boolean);
 
   return parsed.length > 0 ? parsed : [DEFAULT_CLIENT_ORIGIN];
@@ -37,6 +41,7 @@ const app: Express = express();
 
 const httpServer = createServer(app);
 const allowedOrigins = getAllowedOrigins(process.env.CORS_ORIGIN);
+console.log("Socket.IO CORS origins:", allowedOrigins.join(", "));
 
 app.use(express.json());
 

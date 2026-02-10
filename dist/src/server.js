@@ -12,18 +12,22 @@ import { chooseWord } from "./game/word.js";
 import { handleDisconnect } from "./room/disconnect.js";
 import { handleStrokeStart, handleStrokePoints, handleStrokeEnd, handleCanvasClear, handleCanvasUndo, } from "./game/drawing.js";
 const DEFAULT_CLIENT_ORIGIN = "http://localhost:5173";
+function normalizeOrigin(origin) {
+    return origin.trim().replace(/\/+$/, "");
+}
 function getAllowedOrigins(rawOrigins) {
     if (!rawOrigins)
         return [DEFAULT_CLIENT_ORIGIN];
     const parsed = rawOrigins
         .split(",")
-        .map((origin) => origin.trim())
+        .map((origin) => normalizeOrigin(origin))
         .filter(Boolean);
     return parsed.length > 0 ? parsed : [DEFAULT_CLIENT_ORIGIN];
 }
 const app = express();
 const httpServer = createServer(app);
 const allowedOrigins = getAllowedOrigins(process.env.CORS_ORIGIN);
+console.log("Socket.IO CORS origins:", allowedOrigins.join(", "));
 app.use(express.json());
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
