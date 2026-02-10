@@ -1,0 +1,134 @@
+wolverine
+superman
+batman
+gandalf
+voldemort
+harry potter
+Excalibur
+cthulu
+dracula
+werewolf
+tsunami
+tornado
+zeus
+ghost
+cerberus
+martial arts
+grand theft auto
+lightsaber
+ninja
+one piece
+gollum
+dobby
+mike wazowski
+sonic
+injury
+stilts
+telekinesis
+giant
+alien
+black hole
+volcano
+snowboarding
+pirate
+quicksand
+spaceship
+desperation
+blind
+moon
+egyptian
+hip hop
+gorilla
+dinosaur
+high school musical
+evaporation
+clock tower
+secret agent
+grim reaper
+sombrero
+rage
+madness
+kick
+punch
+smile
+racing car
+football
+basketball
+airplane
+castle
+beach
+robot
+diving
+sneeze
+tennis
+jellyfish
+kangaroo
+skateboarding
+wrestling
+zombie
+submarine
+abandoned
+observatory
+atlantis
+forest
+blacksmith
+archaeologist
+upgrade
+quarantine
+tournament
+random
+summer
+sound
+implode
+explode
+brainstorm
+gentleman
+tractor
+forklift
+bicycle
+artillery
+hacker
+physics
+pandemonium
+magnetic
+ice fishing
+fishing
+ping pong
+steamboat
+cruise ship
+atomic bomb
+demolition
+tribe
+illuminati
+evolution
+pyramid
+hypercube
+beard
+thief
+gymnastics
+consciousness
+broadcast
+protest
+weapon
+hierarchy
+royal
+bubble
+isolation
+illness
+temperature
+temptation
+diagram
+invisible
+division
+flex
+torture
+firefighter
+fountain
+factory
+champagne
+engineer
+expression
+scream
+execute
+delivery
+

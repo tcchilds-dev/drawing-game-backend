@@ -4,5 +4,4 @@ todo.txt
 .repomixignore
 repomix.config.json
 repomix-output.xml
-words.txt
 dist
