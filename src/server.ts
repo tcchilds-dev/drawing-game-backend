@@ -20,9 +20,23 @@ import {
   handleCanvasUndo,
 } from "./game/drawing.js";
 
+const DEFAULT_CLIENT_ORIGIN = "http://localhost:5173";
+
+function getAllowedOrigins(rawOrigins: string | undefined): string[] {
+  if (!rawOrigins) return [DEFAULT_CLIENT_ORIGIN];
+
+  const parsed = rawOrigins
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return parsed.length > 0 ? parsed : [DEFAULT_CLIENT_ORIGIN];
+}
+
 const app: Express = express();
 
 const httpServer = createServer(app);
+const allowedOrigins = getAllowedOrigins(process.env.CORS_ORIGIN);
 
 app.use(express.json());
 
@@ -37,7 +51,7 @@ const io = new Server<
   SocketData
 >(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
   connectionStateRecovery: {

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    runtime: node
+    name: drawing-game-backend
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: CORS_ORIGIN
+        sync: false

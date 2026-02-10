@@ -11,15 +11,26 @@ import { handleGuessage } from "./game/guessage.js";
 import { chooseWord } from "./game/word.js";
 import { handleDisconnect } from "./room/disconnect.js";
 import { handleStrokeStart, handleStrokePoints, handleStrokeEnd, handleCanvasClear, handleCanvasUndo, } from "./game/drawing.js";
+const DEFAULT_CLIENT_ORIGIN = "http://localhost:5173";
+function getAllowedOrigins(rawOrigins) {
+    if (!rawOrigins)
+        return [DEFAULT_CLIENT_ORIGIN];
+    const parsed = rawOrigins
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+    return parsed.length > 0 ? parsed : [DEFAULT_CLIENT_ORIGIN];
+}
 const app = express();
 const httpServer = createServer(app);
+const allowedOrigins = getAllowedOrigins(process.env.CORS_ORIGIN);
 app.use(express.json());
 app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
 });
 const io = new Server(httpServer, {
     cors: {
-        origin: "http://localhost:5173",
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
     },
     connectionStateRecovery: {
