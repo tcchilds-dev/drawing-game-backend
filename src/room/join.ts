@@ -81,6 +81,7 @@ export function joinRoom({ io, socket }: EventDependencies) {
     if (room.phase === "drawing" || room.phase === "word-selection") {
       syncCanvasToSocket(socket, payload);
       gameManager.syncPrivateStateToPlayer(payload, playerId, socket.id);
+      gameManager.syncTimerToSocket(payload, socket.id);
     }
 
     callback({ success: true, room: convertedRoom });

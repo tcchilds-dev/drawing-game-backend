@@ -159,8 +159,8 @@ class GameManager {
         this.clearTimer(roomId);
         room.phase = "round-end";
         const scores = {};
-        for (const [id, player] of room.players) {
-            scores[id] = player.score;
+        for (const player of room.players.values()) {
+            scores[player.playerId] = player.score;
         }
         this.io?.to(roomId).emit("round:end", {
             word: gameState.currentWord || "",
@@ -249,6 +249,14 @@ class GameManager {
             return;
         const remaining = Math.max(0, gameState.timerEndsAt - Date.now());
         this.io?.to(roomId).emit("timer:sync", { remaining, phase: room.phase });
+    }
+    syncTimerToSocket(roomId, socketId) {
+        const room = rooms.get(roomId);
+        const gameState = this.games.get(roomId);
+        if (!room || !gameState?.timerEndsAt)
+            return;
+        const remaining = Math.max(0, gameState.timerEndsAt - Date.now());
+        this.io?.to(socketId).emit("timer:sync", { remaining, phase: room.phase });
     }
     broadcastRoomUpdate(roomId) {
         const room = rooms.get(roomId);

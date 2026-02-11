@@ -20,6 +20,7 @@ declare class GameManager {
     private startTimer;
     private clearTimer;
     private syncTimer;
+    syncTimerToSocket(roomId: string, socketId: string): void;
     private broadcastRoomUpdate;
     private calculatePoints;
     private pickRandomWords;

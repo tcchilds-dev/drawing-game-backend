@@ -651,7 +651,7 @@ describe("Socket.IO server integration coverage", () => {
 
     const roundEnd = await roundEndPromise;
     expect(roundEnd.word).toBe(setup.chosenWord);
-    expect(roundEnd.scores[setup.nonArtistClient.id!]).toBeGreaterThan(0);
+    expect(roundEnd.scores[setup.nonArtistPlayerId]).toBeGreaterThan(0);
 
     const room = rooms.get(roomId);
     expect(room?.phase).toBe("round-end");
@@ -1034,6 +1034,10 @@ describe("Socket.IO server integration coverage", () => {
       "canvas:sync"
     );
     const wordMaskPromise = waitForEvent<{ maskedWord: string }>(replacementCharlie, "word:mask");
+    const timerSyncPromise = waitForEvent<{ remaining: number; phase: string }>(
+      replacementCharlie,
+      "timer:sync"
+    );
 
     const replacementJoinResponse = await emitWithAck<RoomResponse>(
       replacementCharlie,
@@ -1044,6 +1048,10 @@ describe("Socket.IO server integration coverage", () => {
 
     await canvasSyncPromise;
     await wordMaskPromise;
+    const timerSync = await timerSyncPromise;
+
+    expect(timerSync.remaining).toBeGreaterThan(0);
+    expect(timerSync.phase).toBe("drawing");
 
     const room = rooms.get(roomId);
     expect(room?.phase).toBe("drawing");

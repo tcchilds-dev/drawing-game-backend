@@ -9,7 +9,9 @@ import { gameManager } from "./game/GameManager.js";
 import { startGame } from "./game/start.js";
 import { handleGuessage } from "./game/guessage.js";
 import { chooseWord } from "./game/word.js";
-import { handleDisconnect } from "./room/disconnect.js";
+import { clearLobbyDisconnectGrace, handleDisconnect } from "./room/disconnect.js";
+import { getActiveRoomId } from "./room/activeRoom.js";
+import { rooms } from "./room/rooms.js";
 import { handleStrokeStart, handleStrokePoints, handleStrokeEnd, handleCanvasClear, handleCanvasUndo, } from "./game/drawing.js";
 const DEFAULT_CLIENT_ORIGIN = "http://localhost:5173";
 function normalizeOrigin(origin) {
@@ -46,6 +48,17 @@ gameManager.setIO(io);
 io.on("connection", (socket) => {
     console.log(`User ${socket.id} connected`);
     const processDisconnect = handleDisconnect({ io, socket });
+    // Socket.IO recovery can restore room membership without firing room:join.
+    // Clear disconnect grace timers as soon as the recovered socket reconnects.
+    if (socket.recovered) {
+        const roomId = getActiveRoomId(socket);
+        const recoveredPlayerId = socket.data.playerId ?? (roomId ? rooms.get(roomId)?.players.get(socket.id)?.playerId : null);
+        if (roomId && recoveredPlayerId) {
+            gameManager.handlePlayerReconnect(roomId, recoveredPlayerId);
+            clearLobbyDisconnectGrace(roomId, recoveredPlayerId);
+            console.log(`Cleared disconnect grace for recovered player ${recoveredPlayerId} in room ${roomId}`);
+        }
+    }
     // User Events
     socket.on("user:username", setUsername({ io, socket }));
     // Room Events
