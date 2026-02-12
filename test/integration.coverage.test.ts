@@ -657,6 +657,52 @@ describe("Socket.IO server integration coverage", () => {
     expect(room?.phase).toBe("round-end");
   });
 
+  it("should keep chat history across turn changes while the room exists", async () => {
+    const roomId = await createRoomAndJoinWithBobAndSally();
+    const setup = await startGameAndSelectFirstWord(
+      roomId,
+      clientSocketBob,
+      clientSocketSally,
+      bobPlayerId,
+      sallyPlayerId
+    );
+
+    const incorrectGuessText = "definitely-not-the-word";
+    const incorrectGuess: Guessage = {
+      playerId: setup.artistPlayerId,
+      guessage: incorrectGuessText,
+      timestamp: new Date().toISOString(),
+    };
+
+    const roomUpdatePromise = waitForEvent(clientSocketBob, "room:update");
+    setup.nonArtistClient.emit("chat:guessage", incorrectGuess);
+    await roomUpdatePromise;
+
+    expect(rooms.get(roomId)?.guessages).toHaveLength(1);
+
+    const nextWordChoicePromise = waitForWordChoiceFromEither(
+      clientSocketBob,
+      clientSocketSally,
+      bobPlayerId,
+      sallyPlayerId,
+      7000
+    );
+
+    const correctGuess: Guessage = {
+      playerId: setup.artistPlayerId,
+      guessage: setup.chosenWord,
+      timestamp: new Date().toISOString(),
+    };
+    setup.nonArtistClient.emit("chat:guessage", correctGuess);
+
+    await nextWordChoicePromise;
+
+    const roomAfterTurnAdvance = rooms.get(roomId);
+    expect(roomAfterTurnAdvance?.phase).toBe("word-selection");
+    expect(roomAfterTurnAdvance?.guessages).toHaveLength(1);
+    expect(roomAfterTurnAdvance?.guessages[0]?.guessage).toBe(incorrectGuessText);
+  });
+
   it("should emit game:end when players drop below two during an active game", async () => {
     const roomId = await createRoomAndJoinWithBobAndSally();
     const setup = await startGameAndSelectFirstWord(

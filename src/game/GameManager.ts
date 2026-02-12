@@ -89,7 +89,6 @@ class GameManager {
 
     room.phase = "lobby";
     room.currentRound = 0;
-    room.guessages = [];
     room.drawingState.currentArtist = null;
     room.drawingState.correctlyGuessed = [];
     room.drawingState.startedAt = null;
@@ -124,7 +123,6 @@ class GameManager {
     room.drawingState.currentArtist = artistPlayerId;
     room.drawingState.correctlyGuessed = [];
     room.drawingState.startedAt = null;
-    room.guessages = [];
 
     room.drawingState.completedStrokes = [];
     room.drawingState.activeStroke = null;
