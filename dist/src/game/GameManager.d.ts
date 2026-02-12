@@ -16,6 +16,7 @@ declare class GameManager {
     private startDrawingPhase;
     private endRound;
     private advanceToNextTurn;
+    private willGameEndAfterCurrentTurn;
     checkGuess(roomId: string, playerId: string, guess: string): boolean;
     private startTimer;
     private clearTimer;

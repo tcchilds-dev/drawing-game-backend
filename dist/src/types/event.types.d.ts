@@ -108,6 +108,7 @@ export interface ServerToClientEvents {
     "guess:correct": (data: {
         playerId: string;
         username: string;
+        suppressCorrectGuessSfx: boolean;
     }) => void;
 }
 //# sourceMappingURL=event.types.d.ts.map

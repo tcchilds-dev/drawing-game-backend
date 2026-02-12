@@ -205,6 +205,29 @@ class GameManager {
         } while (!this.isPlayerConnected(room, gameState.artistQueue[gameState.currentArtistIndex]));
         this.startWordSelection(roomId);
     }
+    willGameEndAfterCurrentTurn(room, gameState) {
+        if (gameState.artistQueue.length === 0) {
+            return true;
+        }
+        const queueLength = gameState.artistQueue.length;
+        let simulatedArtistIndex = gameState.currentArtistIndex;
+        let simulatedRound = room.currentRound;
+        let attempts = 0;
+        do {
+            simulatedArtistIndex++;
+            if (simulatedArtistIndex >= queueLength) {
+                simulatedArtistIndex = 0;
+                simulatedRound++;
+                if (simulatedRound > room.config.numberOfRounds) {
+                    return true;
+                }
+            }
+            attempts++;
+            if (attempts >= queueLength)
+                break;
+        } while (!this.isPlayerConnected(room, gameState.artistQueue[simulatedArtistIndex]));
+        return false;
+    }
     checkGuess(roomId, playerId, guess) {
         const room = rooms.get(roomId);
         const gameState = this.games.get(roomId);
@@ -224,13 +247,16 @@ class GameManager {
         const pointsEarned = this.calculatePoints(room);
         player.score += pointsEarned;
         room.drawingState.correctlyGuessed.push(player);
+        const nonArtistCount = Math.max(0, room.players.size - 1);
+        const everyoneGuessed = room.drawingState.correctlyGuessed.length >= nonArtistCount;
+        const suppressCorrectGuessSfx = everyoneGuessed && this.willGameEndAfterCurrentTurn(room, gameState);
         this.io?.to(roomId).emit("guess:correct", {
             playerId,
             username: player.username,
+            suppressCorrectGuessSfx,
         });
         this.broadcastRoomUpdate(roomId);
-        const nonArtistCount = Math.max(0, room.players.size - 1);
-        if (room.drawingState.correctlyGuessed.length >= nonArtistCount) {
+        if (everyoneGuessed) {
             this.endRound(roomId);
         }
         return true;

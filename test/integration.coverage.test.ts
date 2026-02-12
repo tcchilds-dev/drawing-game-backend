@@ -724,6 +724,113 @@ describe("Socket.IO server integration coverage", () => {
     expect(room?.phase).toBe("round-end");
   });
 
+  it("should emit guess:correct without SFX suppression when game continues", async () => {
+    const roomId = await createRoomAndJoinWithBobAndSally({
+      numberOfRounds: 2,
+    });
+    const setup = await startGameAndSelectFirstWord(
+      roomId,
+      clientSocketBob,
+      clientSocketSally,
+      bobPlayerId,
+      sallyPlayerId
+    );
+
+    const guessCorrectPromise = waitForEvent<{
+      playerId: string;
+      username: string;
+      suppressCorrectGuessSfx: boolean;
+    }>(setup.artistClient, "guess:correct");
+
+    const correctGuess: Guessage = {
+      playerId: setup.artistPlayerId,
+      guessage: setup.chosenWord,
+      timestamp: new Date().toISOString(),
+    };
+
+    setup.nonArtistClient.emit("chat:guessage", correctGuess);
+
+    const guessCorrect = await guessCorrectPromise;
+    expect(guessCorrect.playerId).toBe(setup.nonArtistPlayerId);
+    expect(guessCorrect.suppressCorrectGuessSfx).toBe(false);
+  });
+
+  it(
+    "should emit guess:correct with SFX suppression when correct guess leads to game:end",
+    async () => {
+      const roomId = await createRoomAndJoinWithBobAndSally({
+        numberOfRounds: 1,
+      });
+      const firstTurn = await startGameAndSelectFirstWord(
+        roomId,
+        clientSocketBob,
+        clientSocketSally,
+        bobPlayerId,
+        sallyPlayerId
+      );
+
+      const firstRoundEndPromise = waitForEvent<{ word: string; scores: Record<string, number> }>(
+        firstTurn.artistClient,
+        "round:end"
+      );
+
+      firstTurn.nonArtistClient.emit("chat:guessage", {
+        playerId: firstTurn.nonArtistPlayerId,
+        guessage: firstTurn.chosenWord,
+        timestamp: new Date().toISOString(),
+      } satisfies Guessage);
+
+      await firstRoundEndPromise;
+
+      const secondTurn = await waitForWordChoiceFromEither(
+        clientSocketBob,
+        clientSocketSally,
+        bobPlayerId,
+        sallyPlayerId,
+        7000
+      );
+
+      const secondTurnWord = secondTurn.words[0];
+      if (!secondTurnWord) {
+        throw new Error("Expected second-turn word options");
+      }
+
+      const selectResponse = await emitWithAck<WordResponse>(
+        secondTurn.artistClient,
+        "word:choice",
+        secondTurnWord
+      );
+      expect(selectResponse.success).toBe(true);
+      if (!selectResponse.success) {
+        throw new Error(selectResponse.error);
+      }
+
+      const guessCorrectPromise = waitForEvent<{
+        playerId: string;
+        username: string;
+        suppressCorrectGuessSfx: boolean;
+      }>(secondTurn.artistClient, "guess:correct");
+      const gameEndPromise = waitForEvent<{ finalStandings: Array<{ playerId: string }> }>(
+        secondTurn.artistClient,
+        "game:end",
+        7000
+      );
+
+      secondTurn.nonArtistClient.emit("chat:guessage", {
+        playerId: secondTurn.nonArtistPlayerId,
+        guessage: secondTurnWord,
+        timestamp: new Date().toISOString(),
+      } satisfies Guessage);
+
+      const guessCorrect = await guessCorrectPromise;
+      expect(guessCorrect.playerId).toBe(secondTurn.nonArtistPlayerId);
+      expect(guessCorrect.suppressCorrectGuessSfx).toBe(true);
+
+      await gameEndPromise;
+    },
+    15000
+  );
+
   it("should reveal timed hints during short drawing rounds and prefer non-adjacent indices", async () => {
     const roomId = await createRoomAndJoinWithBobAndSally({
       wordSelectionSize: 5,
