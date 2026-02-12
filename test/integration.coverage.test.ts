@@ -107,6 +107,73 @@ describe("Socket.IO server integration coverage", () => {
     });
   }
 
+  function collectWordMasks(
+    client: ClientSocket,
+    count: number,
+    timeoutMs: number = 6000
+  ): Promise<string[]> {
+    return new Promise((resolve, reject) => {
+      const receivedMasks: string[] = [];
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Timed out waiting for ${count} word:mask events`));
+      }, timeoutMs);
+
+      const handler = (data: { maskedWord: string }) => {
+        receivedMasks.push(data.maskedWord);
+        if (receivedMasks.length >= count) {
+          cleanup();
+          resolve(receivedMasks);
+        }
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        client.off("word:mask", handler);
+      };
+
+      client.on("word:mask", handler);
+    });
+  }
+
+  function countRevealableCharacters(word: string): number {
+    return word.split("").filter((char) => char !== " ").length;
+  }
+
+  function countRevealedCharacters(maskedWord: string): number {
+    return maskedWord.split("").filter((char) => char !== "_" && char !== " ").length;
+  }
+
+  function getRevealedIndices(maskedWord: string): number[] {
+    const indices: number[] = [];
+    for (let i = 0; i < maskedWord.length; i++) {
+      const char = maskedWord[i];
+      if (char !== "_" && char !== " ") {
+        indices.push(i);
+      }
+    }
+    return indices;
+  }
+
+  function maxNonAdjacentRevealableCount(word: string): number {
+    const dp: number[] = new Array(word.length + 1).fill(0);
+
+    for (let i = 1; i <= word.length; i++) {
+      const skip = dp[i - 1];
+
+      if (word[i - 1] === " ") {
+        dp[i] = skip;
+        continue;
+      }
+
+      const take = 1 + (i >= 2 ? dp[i - 2] : 0);
+      dp[i] = Math.max(skip, take);
+    }
+
+    return dp[word.length] ?? 0;
+  }
+
   async function expectNoEvent(
     client: ClientSocket,
     event: string,
@@ -657,6 +724,95 @@ describe("Socket.IO server integration coverage", () => {
     expect(room?.phase).toBe("round-end");
   });
 
+  it("should reveal timed hints during short drawing rounds and prefer non-adjacent indices", async () => {
+    const roomId = await createRoomAndJoinWithBobAndSally({
+      wordSelectionSize: 5,
+      drawTimer: 4000,
+    });
+
+    const wordChoicePromise = waitForWordChoiceFromEither(
+      clientSocketBob,
+      clientSocketSally,
+      bobPlayerId,
+      sallyPlayerId
+    );
+
+    const startResponse = await emitWithAck<SimpleResponse>(clientSocketBob, "game:start", roomId);
+    expect(startResponse.success).toBe(true);
+
+    const wordChoice = await wordChoicePromise;
+    const selectedWord =
+      wordChoice.words.find((word) => countRevealableCharacters(word) >= 5) ??
+      wordChoice.words.find((word) => countRevealableCharacters(word) >= 3) ??
+      wordChoice.words[0];
+
+    if (!selectedWord) {
+      throw new Error("Expected at least one selectable word");
+    }
+
+    const revealableCount = countRevealableCharacters(selectedWord);
+    const expectedHintCount = Math.min(3, revealableCount);
+    const expectedMaskEvents = expectedHintCount + 1; // initial mask + hint updates
+
+    const maskCollection = collectWordMasks(wordChoice.nonArtistClient, expectedMaskEvents, 5500);
+
+    const selectResponse = await emitWithAck<WordResponse>(
+      wordChoice.artistClient,
+      "word:choice",
+      selectedWord
+    );
+    expect(selectResponse.success).toBe(true);
+
+    const masks = await maskCollection;
+    expect(masks[0]).toBe(selectedWord.replace(/[^ ]/g, "_"));
+
+    for (let i = 0; i < masks.length; i++) {
+      expect(countRevealedCharacters(masks[i])).toBe(i);
+    }
+
+    const finalMask = masks[masks.length - 1];
+    const revealedIndices = getRevealedIndices(finalMask);
+    expect(revealedIndices).toHaveLength(expectedHintCount);
+
+    if (expectedHintCount === 3 && maxNonAdjacentRevealableCount(selectedWord) >= 3) {
+      for (let i = 0; i < revealedIndices.length; i++) {
+        for (let j = i + 1; j < revealedIndices.length; j++) {
+          expect(Math.abs(revealedIndices[i] - revealedIndices[j])).toBeGreaterThan(1);
+        }
+      }
+    }
+  });
+
+  it("should stop scheduled hint reveals once a round ends early", async () => {
+    const roomId = await createRoomAndJoinWithBobAndSally({
+      drawTimer: 6000,
+    });
+
+    const setup = await startGameAndSelectFirstWord(
+      roomId,
+      clientSocketBob,
+      clientSocketSally,
+      bobPlayerId,
+      sallyPlayerId
+    );
+
+    const roundEndPromise = waitForEvent<{ word: string; scores: Record<string, number> }>(
+      setup.artistClient,
+      "round:end"
+    );
+
+    const correctGuess: Guessage = {
+      playerId: setup.artistPlayerId,
+      guessage: setup.chosenWord,
+      timestamp: new Date().toISOString(),
+    };
+
+    setup.nonArtistClient.emit("chat:guessage", correctGuess);
+    await roundEndPromise;
+
+    await expectNoEvent(setup.nonArtistClient, "word:mask", 2200);
+  });
+
   it("should keep chat history across turn changes while the room exists", async () => {
     const roomId = await createRoomAndJoinWithBobAndSally();
     const setup = await startGameAndSelectFirstWord(
@@ -968,6 +1124,54 @@ describe("Socket.IO server integration coverage", () => {
       (player) => player.playerId === charliePlayerId
     ).length;
     expect(charlieCount).toBe(1);
+  });
+
+  it("should sync the latest hinted mask to a rejoining guesser", async () => {
+    await setupUser(clientSocketBob, "Bob", bobPlayerId);
+    const { client: charlieClient, playerId: charliePlayerId } = await createExtraClientWithUser(
+      "Charlie"
+    );
+
+    const createResponse = await emitWithAck<RoomResponse>(clientSocketBob, "room:create", {
+      drawTimer: 4000,
+      wordSelectionSize: 5,
+    });
+    expect(createResponse.success).toBe(true);
+    if (!createResponse.success) return;
+
+    const roomId = createResponse.room.id;
+    const joinResponse = await emitWithAck<RoomResponse>(charlieClient, "room:join", roomId);
+    expect(joinResponse.success).toBe(true);
+
+    const setup = await startGameAndSelectFirstWord(
+      roomId,
+      clientSocketBob,
+      charlieClient,
+      bobPlayerId,
+      charliePlayerId
+    );
+
+    const masks = await collectWordMasks(setup.nonArtistClient, 1, 2500);
+    const hintedMask = masks[0];
+
+    setup.nonArtistClient.disconnect();
+    await wait(100);
+
+    const { client: replacementGuesser } = await createExtraClientWithUser(
+      "Charlie",
+      setup.nonArtistPlayerId
+    );
+
+    const maskPromise = waitForEvent<{ maskedWord: string }>(replacementGuesser, "word:mask");
+    const joinReplacementResponse = await emitWithAck<RoomResponse>(
+      replacementGuesser,
+      "room:join",
+      roomId
+    );
+    expect(joinReplacementResponse.success).toBe(true);
+
+    const syncedMask = await maskPromise;
+    expect(syncedMask.maskedWord).toBe(hintedMask);
   });
 
   it("should resend word choices when the artist rejoins during word-selection", async () => {

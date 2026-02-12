@@ -31,8 +31,11 @@ class GameManager {
             artistQueue: queue,
             currentArtistIndex: 0,
             currentWord: null,
+            maskedWord: null,
             wordChoices: [],
             usedWordKeys: new Set(),
+            revealedHintIndices: new Set(),
+            hintTimers: [],
             timer: null,
             timerEndsAt: null,
             disconnectedPlayers: new Map(),
@@ -48,6 +51,7 @@ class GameManager {
         if (!room || !gameState)
             return;
         this.clearTimer(roomId);
+        this.clearHintTimers(gameState);
         this.clearDisconnectTimers(gameState);
         const finalStandings = Array.from(room.players.values())
             .map((player) => ({
@@ -88,7 +92,10 @@ class GameManager {
         room.drawingState.startedAt = null;
         room.drawingState.completedStrokes = [];
         room.drawingState.activeStroke = null;
+        this.clearHintTimers(gameState);
         gameState.currentWord = null;
+        gameState.maskedWord = null;
+        gameState.revealedHintIndices.clear();
         gameState.wordChoices = this.pickRandomWords(room.config.wordSelectionSize, gameState.usedWordKeys);
         console.log(`Starting word selection for room ${roomId}, artist: ${artistPlayerId}`);
         console.log(`Word choices: ${gameState.wordChoices}`);
@@ -127,8 +134,9 @@ class GameManager {
         this.clearTimer(roomId);
         gameState.currentWord = matchingChoice;
         gameState.usedWordKeys.add(matchingChoice.toLowerCase());
-        const maskedWord = this.maskWord(matchingChoice);
-        this.io?.to(roomId).emit("word:mask", { maskedWord });
+        gameState.revealedHintIndices.clear();
+        gameState.maskedWord = this.maskWord(matchingChoice);
+        this.io?.to(roomId).emit("word:mask", { maskedWord: gameState.maskedWord });
         const artistSocketId = this.getSocketIdByPlayerId(room, playerId);
         if (artistSocketId) {
             this.io?.to(artistSocketId).emit("word:selected", { word: matchingChoice });
@@ -138,11 +146,13 @@ class GameManager {
     }
     startDrawingPhase(roomId) {
         const room = rooms.get(roomId);
-        if (!room)
+        const gameState = this.games.get(roomId);
+        if (!room || !gameState)
             return;
         room.phase = "drawing";
         room.drawingState.startedAt = Date.now();
         this.broadcastRoomUpdate(roomId);
+        this.scheduleHintReveals(roomId, room.config.drawTimer);
         this.startTimer(roomId, room.config.drawTimer, () => {
             this.endRound(roomId);
         });
@@ -155,6 +165,7 @@ class GameManager {
         if (room.phase !== "drawing")
             return;
         this.clearTimer(roomId);
+        this.clearHintTimers(gameState);
         room.phase = "round-end";
         const scores = {};
         for (const player of room.players.values()) {
@@ -287,6 +298,80 @@ class GameManager {
             .map((char) => (char === " " ? " " : "_"))
             .join("");
     }
+    getHintSchedule(drawTimerMs) {
+        if (drawTimerMs >= 45_000) {
+            return [15_000, 30_000, 45_000];
+        }
+        return [0.25, 0.5, 0.75].map((ratio) => Math.max(0, Math.round(drawTimerMs * ratio)));
+    }
+    getRevealableIndices(word, revealedHintIndices) {
+        const indices = [];
+        for (let i = 0; i < word.length; i++) {
+            if (word[i] === " ")
+                continue;
+            if (revealedHintIndices.has(i))
+                continue;
+            indices.push(i);
+        }
+        return indices;
+    }
+    isHintIndexSeparated(index, revealedHintIndices) {
+        for (const revealedIndex of revealedHintIndices) {
+            if (Math.abs(index - revealedIndex) <= 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+    pickHintIndex(word, revealedHintIndices) {
+        const remaining = this.getRevealableIndices(word, revealedHintIndices);
+        if (remaining.length === 0)
+            return null;
+        const nonAdjacent = remaining.filter((index) => this.isHintIndexSeparated(index, revealedHintIndices));
+        const pool = nonAdjacent.length > 0 ? nonAdjacent : remaining;
+        const randomIndex = Math.floor(Math.random() * pool.length);
+        return pool[randomIndex] ?? null;
+    }
+    applyHintReveal(maskedWord, word, index) {
+        const maskedChars = maskedWord.split("");
+        maskedChars[index] = word[index] ?? maskedChars[index];
+        return maskedChars.join("");
+    }
+    revealHint(roomId) {
+        const room = rooms.get(roomId);
+        const gameState = this.games.get(roomId);
+        if (!room || !gameState)
+            return;
+        if (room.phase !== "drawing")
+            return;
+        if (!gameState.currentWord || !gameState.maskedWord)
+            return;
+        const revealIndex = this.pickHintIndex(gameState.currentWord, gameState.revealedHintIndices);
+        if (revealIndex === null)
+            return;
+        gameState.revealedHintIndices.add(revealIndex);
+        gameState.maskedWord = this.applyHintReveal(gameState.maskedWord, gameState.currentWord, revealIndex);
+        this.io?.to(roomId).emit("word:mask", { maskedWord: gameState.maskedWord });
+    }
+    scheduleHintReveals(roomId, drawTimerMs) {
+        const gameState = this.games.get(roomId);
+        if (!gameState)
+            return;
+        this.clearHintTimers(gameState);
+        const schedule = this.getHintSchedule(drawTimerMs);
+        for (const delayMs of schedule) {
+            const timer = setTimeout(() => {
+                this.revealHint(roomId);
+            }, delayMs);
+            gameState.hintTimers.push(timer);
+        }
+    }
+    clearHintTimers(gameState) {
+        for (const timer of gameState.hintTimers) {
+            clearTimeout(timer);
+        }
+        gameState.hintTimers = [];
+    }
     buildArtistQueue(room) {
         const seen = new Set();
         const queue = [];
@@ -334,6 +419,7 @@ class GameManager {
         if (gameState.timer) {
             clearTimeout(gameState.timer);
         }
+        this.clearHintTimers(gameState);
         this.clearDisconnectTimers(gameState);
         this.games.delete(roomId);
         console.log(`Cleared game state for room ${roomId}`);
@@ -343,6 +429,7 @@ class GameManager {
             if (gameState.timer) {
                 clearTimeout(gameState.timer);
             }
+            this.clearHintTimers(gameState);
             this.clearDisconnectTimers(gameState);
         }
         this.games.clear();
@@ -361,6 +448,7 @@ class GameManager {
         if (room.drawingState.currentArtist === playerId) {
             if (room.phase === "word-selection") {
                 this.clearTimer(roomId);
+                this.clearHintTimers(gameState);
                 this.advanceToNextTurn(roomId);
             }
             else if (room.phase === "drawing") {
@@ -451,7 +539,9 @@ class GameManager {
             this.io?.to(socketId).emit("word:selected", { word: gameState.currentWord });
             return;
         }
-        this.io?.to(socketId).emit("word:mask", { maskedWord: this.maskWord(gameState.currentWord) });
+        this.io?.to(socketId).emit("word:mask", {
+            maskedWord: gameState.maskedWord ?? this.maskWord(gameState.currentWord),
+        });
     }
     removeDisconnectedPlayer(roomId, playerId, socketId) {
         const room = rooms.get(roomId);

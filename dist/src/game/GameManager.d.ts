@@ -26,6 +26,14 @@ declare class GameManager {
     private pickRandomWords;
     private shuffleArray;
     private maskWord;
+    private getHintSchedule;
+    private getRevealableIndices;
+    private isHintIndexSeparated;
+    private pickHintIndex;
+    private applyHintReveal;
+    private revealHint;
+    private scheduleHintReveals;
+    private clearHintTimers;
     private buildArtistQueue;
     private getUserByPlayerId;
     private getSocketIdByPlayerId;
